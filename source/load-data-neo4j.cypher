@@ -3,14 +3,15 @@ CALL spatial.importShapefileToLayer('layer_curitiba_neighbourhoods','import/bair
 
 -- LOAD HEALTH STATIONS
 LOAD CSV WITH HEADERS FROM "file:///unidades-saude.csv" AS row
-CREATE UNIQUE (p:Poi)
-    set        p.category=      row.categoria
-              ,p.name=          row.nome
-              ,p.geometry=     'POINT('+row.longitude +' '+row.latitude+')' 
-              ,p.height=        row.elevacao
-              ,p.neighbourhood= row.bairro
-              ,p.distrito=      row.distrito
-              ,p.source=        'planilha'
+CREATE (p:Poi)
+    set        p.category      = row.categoria
+              ,p.name          = row.nome
+              ,p.address       = row.endereco
+              ,p.geometry      = 'POINT('+row.longitude +' '+row.latitude+')' 
+              ,p.height        = row.elevacao
+              ,p.neighbourhood = row.bairro
+              ,p.district      = row.distrito
+              ,p.source        = 'planilha'
 WITH p
-CALL spatial.addNode('cwb_neighbourhoods',p) YIELD node
+CALL spatial.addNode('layer_curitiba_neighbourhoods',p) YIELD node
 RETURN node;
