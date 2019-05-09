@@ -1,3 +1,6 @@
+CALL spatial.addWKTLayer('layer_curitiba_neighbourhoods','geometry')
+CALL spatial.importShapefileToLayer('layer_curitiba_neighbourhoods','import/bairros/DIVISA_DE_BAIRROS.shp')
+
 -- LOAD HEALTH STATIONS
 LOAD CSV WITH HEADERS FROM "file:///unidades-saude.csv" AS row
 CREATE UNIQUE (p:Poi)
