@@ -1,4 +1,4 @@
--- LOAD HEALPH STATIONS
+-- LOAD HEALTH STATIONS
 LOAD CSV WITH HEADERS FROM "file:///unidades-saude.csv" AS row
 CREATE UNIQUE (p:Poi)
     set        p.category=      row.categoria
