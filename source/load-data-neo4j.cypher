@@ -1,6 +1,6 @@
 -- LOAD HEALPH STATIONS
 LOAD CSV WITH HEADERS FROM "file:///unidades-saude.csv" AS row
-CREATE (p:Poi)
+CREATE UNIQUE (p:Poi)
     set        p.category=      row.categoria
               ,p.name=          row.nome
               ,p.geometry=     'POINT('+row.longitude +' '+row.latitude+')' 
