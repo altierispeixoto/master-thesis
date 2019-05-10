@@ -12,7 +12,6 @@ WITH n
 CALL spatial.addNode('layer_curitiba_neighbourhoods',n) YIELD node
 RETURN node;
 
-
 -- LOAD HEALTH STATIONS
 LOAD CSV WITH HEADERS FROM "file:///unidades-saude.csv" AS row
 CREATE (p:Poi)
@@ -26,4 +25,15 @@ CREATE (p:Poi)
               ,p.source        = 'planilha'
 WITH p
 CALL spatial.addNode('layer_curitiba_neighbourhoods',p) YIELD node
+RETURN node;
+
+-- LOAD BUS STOPS
+LOAD CSV WITH HEADERS FROM "file:///bus-stop.csv" AS row
+create (bs:BusStop) 
+set bs.name     = row.nome,
+    bs.number   = row.num,
+    bs.type     = row.tipo,
+    bs.geometry = 'POINT(' + row.lon +' '+ row.lat +')'  
+WITH bs
+CALL spatial.addNode('layer_curitiba_neighbourhoods',bs) YIELD node
 RETURN node;
