@@ -1,5 +1,17 @@
 CALL spatial.addWKTLayer('layer_curitiba_neighbourhoods','geometry')
-CALL spatial.importShapefileToLayer('layer_curitiba_neighbourhoods','import/bairros/DIVISA_DE_BAIRROS.shp')
+
+-- LOAD NEIGHBOURHOODS
+LOAD CSV WITH HEADERS FROM "file:///bairros.csv" AS row  FIELDTERMINATOR ';'
+CREATE (n:Neighbourhood)
+    set        n.type         = row.TIPO
+              ,n.name         = row.NOME
+              ,n.geometry     = row.WKT
+              ,n.section_code = row.CD_REGIONA
+              ,n.section_name = row.NM_REGIONA
+WITH n
+CALL spatial.addNode('layer_curitiba_neighbourhoods',n) YIELD node
+RETURN node;
+
 
 -- LOAD HEALTH STATIONS
 LOAD CSV WITH HEADERS FROM "file:///unidades-saude.csv" AS row
