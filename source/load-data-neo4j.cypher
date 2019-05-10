@@ -37,3 +37,9 @@ set bs.name     = row.nome,
 WITH bs
 CALL spatial.addNode('layer_curitiba_neighbourhoods',bs) YIELD node
 RETURN node;
+
+
+-- returns the point that is inside the neighbourhood  
+match(p:Poi) where p.neighbourhood = 'Boa Vista'
+call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:-49.245868,lat:-25.380041},0.001) yield node,distance
+return node, distance
