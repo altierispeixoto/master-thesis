@@ -50,6 +50,18 @@ WITH bs
 CALL spatial.addNode('layer_curitiba_neighbourhoods',bs) YIELD node
 RETURN node;
 
+USING PERIODIC COMMIT 100000
+LOAD CSV WITH HEADERS FROM "file:///routes.csv" AS row
+MATCH(bss: BusStop {number: row.ponto_inicio}), (bse: BusStop {number: row.ponto_final})
+CREATE(bss) - [: NEXT_STOP { 
+    line_code: row.cod_linha
+   ,line_way: row.sentido_linha
+   ,service_category: row.categoria_servico
+   ,line_name: row.nome_linha
+   ,color_name: row.nome_cor
+   ,card_only: row.somente_cartao
+   }]->(bse)
+
 -- create a relationship between health stations and neighbourhood
 MATCH (p:Poi )
 WITH collect(p) as pois
@@ -65,6 +77,55 @@ call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(bus_sto
 with bus_stop, node as n where 'Neighbourhood' IN LABELS(n)  merge (bus_stop)-[r:IS_LOCATED]->(n)  return count(bus_stop)",{limit:500})
 
 
+USING PERIODIC COMMIT 100000
+LOAD CSV WITH HEADERS FROM "file:///events.csv" AS row
+CREATE(p:Position)
+SET p.vehicle = row.veic
+,p.event_timestamp = datetime(row.event_timestamp)
+,p.date = row.date
+,p.line_code = row.cod_linha
+,p.geometry  = 'POINT(' + row.lon +' '+ row.lat +')'  
+,p.latitude  = toFloat(row.lat)
+,p.longitude = toFloat(row.lon);
+
+
+-- caution : this can enter in an infinite loop
+call apoc.periodic.commit("
+match (p:Position) WHERE NOT (p)-[:MOVES_TO]->() 
+WITH distinct p.vehicle as vehicle,p.line_code as line_code,p.date as date  limit {limit}
+   MATCH (p0:Position {vehicle: vehicle,line_code: line_code,date: date }) 
+   WITH p0 ORDER BY p0.event_timestamp DESC  
+       WITH collect(p0) as entries 
+         FOREACH(i in RANGE(0, size(entries)-2) | 
+           FOREACH(e1 in [entries[i]] | 
+             FOREACH(e2 in [entries[i+1]] | 
+               MERGE (e2)-[ :MOVES_TO ]->(e1)))) return count(*)",{limit:100})
+
+CALL apoc.periodic.iterate(
+"MATCH (ps:Position)-[m:MOVES_TO]->(pf:Position) where not exists(m.delta_time) 
+RETURN ps,pf,distance(ps.coordinates,pf.coordinates) as delta_distance,
+ (datetime(pf.event_timestamp).epochMillis - datetime(ps.event_timestamp).epochMillis)/1000 as delta_time",
+"MATCH (ps)-[m:MOVES_TO]->(pf) SET m.delta_distance = delta_distance, m.delta_time = delta_time", {batchSize:1000000,iterateList:true, parallel:false})
+
+
+call apoc.periodic.commit("
+match (p:Position) WHERE NOT ()-[:RTREE_REFERENCE]->(p:Position) 
+WITH p limit {limit}
+CALL spatial.addNode('layer_curitiba_neighbourhoods',p) YIELD node
+RETURN count(p);
+",{limit:10000})
+
+-- old
+/*
+ match (p0:Position) with distinct p0.vehicle as vehicle,p0.line_code as line_code,p0.date as date 
+   MATCH (p:Position {vehicle: vehicle,line_code: line_code,date: date }) 
+   WITH p ORDER BY p.event_timestamp DESC  
+       WITH collect(p) as entries 
+         FOREACH(i in RANGE(0, size(entries)-2) | 
+           FOREACH(e1 in [entries[i]] | 
+             FOREACH(e2 in [entries[i+1]] | 
+               MERGE (e2)-[ :MOVES_TO ]->(e1))));
+*/
 -- queries 
 
 -- pois inside pinheirinho
