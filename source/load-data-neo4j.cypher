@@ -56,6 +56,9 @@ CALL spatial.addNode('layer_curitiba_neighbourhoods',p) YIELD node
 RETURN node;
 
 
+match (p:Poi)-[:IS_LOCATED]->(n:Neighbourhood) set p.section_name = n.section_name
+
+
 -- LOAD BUS STOPS
 USING PERIODIC COMMIT 500
 LOAD CSV WITH HEADERS FROM "file:///bus-stop.csv" AS row
@@ -70,6 +73,7 @@ WITH bs
 CALL spatial.addNode('layer_curitiba_neighbourhoods',bs) YIELD node
 RETURN node;
 
+match (bs:BusStop)-[:IS_LOCATED]->(n:Neighbourhood) set bs.section_name = n.section_name , bs.neighbourhood = n.name
 
 USING PERIODIC COMMIT 10000
 LOAD CSV WITH HEADERS FROM "file:///routes.csv" AS row
@@ -82,6 +86,10 @@ CREATE(bss) - [: NEXT_STOP {
    ,color_name: row.nome_cor
    ,card_only: row.somente_cartao
    }]->(bse)
+
+
+MATCH (p1:BusStop)-[r:NEXT_STOP]->(p2:BusStop)
+SET r.distance = distance(point({longitude: toFloat(p1.longitude),latitude: toFloat(p1.latitude) ,crs: 'wgs-84'}) ,point({longitude: toFloat(p2.longitude),latitude: toFloat(p2.latitude) ,crs: 'wgs-84'}))
 
 
 -- create a relationship between health stations and neighbourhood
@@ -101,38 +109,16 @@ with bus_stop, node as n where 'Neighbourhood' IN LABELS(n)  merge (bus_stop)-[r
 
 
 
--- caution : this can enter in an infinite loop
-CALL apoc.periodic.commit(
-  "match (p:Position)
-   with distinct p.vehicle as vehicle,p.line_code as line_code,p.date as date limit 100
-   MATCH (p0:Position {vehicle: vehicle, line_code: line_code, date: date })
-    WITH p0 ORDER BY p0.event_timestamp DESC
-       WITH collect(p0) as entries
-         FOREACH(i in RANGE(0, size(entries)-2) |
-           FOREACH(e1 in [entries[i]] |
-             FOREACH(e2 in [entries[i+1]] |
-               MERGE (e2)-[ :MOVES_TO ]->(e1)))) ", {limit:100})
-
-
-
-match (p:Position)
-with distinct p.vehicle as vehicle,p.line_code as line_code,p.date as date limit 10
-
-
-MATCH (p:Position {vehicle: vehicle, line_code: line_code, date: date })
- WITH p ORDER BY p.event_timestamp DESC
-    WITH collect(p) as entries
-      FOREACH(i in RANGE(0, size(entries)-2) |
-        FOREACH(e1 in [entries[i]] |
-          FOREACH(e2 in [entries[i+1]] |
-            MERGE (e2)-[ :MOVES_TO ]->(e1))))
-
-
 CALL apoc.periodic.iterate(
 "MATCH (ps:Position)-[m:MOVES_TO]->(pf:Position) where not exists(m.delta_time)
-RETURN ps,pf,distance(ps.coordinates,pf.coordinates) as delta_distance,
+RETURN ps,pf, distance(ps.coordinates,pf.coordinates) as delta_distance,
  (datetime(pf.event_timestamp).epochMillis - datetime(ps.event_timestamp).epochMillis)/1000 as delta_time",
 "MATCH (ps)-[m:MOVES_TO]->(pf) SET m.delta_distance = delta_distance, m.delta_time = delta_time", {batchSize:1000000,iterateList:true, parallel:false})
+
+
+MATCH (poi:Poi{category:'Unidade Saude Basica',source:'planilha'}),(bs:BusStop)
+WHERE distance(point({longitude: toFloat(poi.longitude),latitude: toFloat(poi.latitude) ,crs: 'wgs-84'}) ,point({longitude: toFloat(bs.longitude),latitude: toFloat(bs.latitude) ,crs: 'wgs-84'})) < 500
+CREATE (p)-[:WALK]->(poi)
 
 
 // call apoc.periodic.commit("
@@ -142,26 +128,28 @@ RETURN ps,pf,distance(ps.coordinates,pf.coordinates) as delta_distance,
 // RETURN count(p);
 // ",{limit:10000})
 
--- old
-
- // match (p0:Position) with distinct p0.vehicle as vehicle,p0.line_code as line_code,p0.date as date
- //   MATCH (p:Position {vehicle: vehicle,line_code: line_code,date: date })
- //   WITH p ORDER BY p.event_timestamp DESC
- //       WITH collect(p) as entries
- //         FOREACH(i in RANGE(0, size(entries)-2) |
- //           FOREACH(e1 in [entries[i]] |
- //             FOREACH(e2 in [entries[i+1]] |
- //               MERGE (e2)-[ :MOVES_TO ]->(e1))));
- //
--- queries
-
--- pois inside pinheirinho
-match(p:Poi) where p.neighbourhood = 'Pinheirinho'
-call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(p.longitude),lat:toFloat(p.latitude)},0.00001) yield node,distance
-with p,  node  as n where 'Neighbourhood' IN LABELS(n)
-merge (p)-[r:IS_LOCATED]->(n)  return p,r,n
 
 -- distance between point of interest and bus_stop
 match (p:Poi)-[r:IS_LOCATED]->(n:Neighbourhood)<-[r0:IS_LOCATED]-(bs:BusStop)
 return n.name,n.section_name,p.name,p.latitude,p.longitude,bs.name,bs.latitude,bs.longitude,
 distance(point({longitude: toFloat(p.longitude),latitude: toFloat(p.latitude) ,crs: 'wgs-84'}) ,point({longitude: toFloat(bs.longitude),latitude: toFloat(bs.latitude) ,crs: 'wgs-84'})) AS distance limit 100
+
+
+
+//calculates minimum distance from every bus stop to its closest health unity in the same district:
+MATCH (bs:BusStop),(poi:Poi)
+WHERE bs.section_name = poi.section_name
+CALL apoc.algo.dijkstra(bs, poi, 'NEXT_STOP|WALK', 'distance') YIELD weight
+RETURN bs.section_name as regional
+      ,bs.neighbourhood as bairro
+      ,bs.number AS numero
+      ,bs.latitude as latitude
+      ,bs.longitude as longitude
+      ,poi.name as nome_us
+      ,poi.section_name,poi.latitude as us_latitude, poi.longitude as us_longitude, min(weight) as distancia limit 10
+
+
+MATCH (p:PontoLinha),(poi:Poi{categoria:'Unidade Saude Basica',source:'planilha'})
+WHERE p.regional = poi.distrito
+CALL apoc.algo.dijkstra(p, poi, 'proximo|caminhar', 'distancia') YIELD weight
+RETURN p.numero AS numero, p.latitude as latitude, p.longitude as longitude, min(weight) as distancia
