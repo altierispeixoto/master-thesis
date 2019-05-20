@@ -118,7 +118,16 @@ RETURN ps,pf, distance(ps.coordinates,pf.coordinates) as delta_distance,
 
 MATCH (poi:Poi{category:'Unidade Saude Basica',source:'planilha'}),(bs:BusStop)
 WHERE distance(point({longitude: toFloat(poi.longitude),latitude: toFloat(poi.latitude) ,crs: 'wgs-84'}) ,point({longitude: toFloat(bs.longitude),latitude: toFloat(bs.latitude) ,crs: 'wgs-84'})) < 500
-CREATE (p)-[:WALK]->(poi)
+CREATE (bs)-[:WALK]->(poi)
+
+
+
+MATCH (bs:BusStop)-[r:WALK]->(poi:Poi)
+SET r.distance= distance(point({longitude: toFloat(poi.longitude),latitude: toFloat(poi.latitude) ,crs: 'wgs-84'}) ,point({longitude: toFloat(bs.longitude),latitude: toFloat(bs.latitude) ,crs: 'wgs-84'}))
+
+// MATCH (p:BusStop)-[r:WALK]->(poi:Poi)
+// SET r.distance=round((2 * 6371 * asin(sqrt(haversin(radians(toFloat(p.latitude) - toFloat(poi.latitude)))
+// + cos(radians(toFloat(p.latitude)))* cos(radians(toFloat(poi.latitude)))* haversin(radians(toFloat(p.longitude) - toFloat(poi.longitude))))))*100)/100
 
 
 // call apoc.periodic.commit("
@@ -146,7 +155,7 @@ RETURN bs.section_name as regional
       ,bs.latitude as latitude
       ,bs.longitude as longitude
       ,poi.name as nome_us
-      ,poi.section_name,poi.latitude as us_latitude, poi.longitude as us_longitude, min(weight) as distancia limit 10
+      ,poi.section_name,poi.latitude as us_latitude, poi.longitude as us_longitude, min(weight) as distancia
 
 
 MATCH (p:PontoLinha),(poi:Poi{categoria:'Unidade Saude Basica',source:'planilha'})
