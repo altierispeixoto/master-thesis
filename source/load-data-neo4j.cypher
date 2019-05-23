@@ -1,29 +1,24 @@
-MATCH (n)
-DETACH DELETE n
+MATCH (n) DETACH DELETE n
 
-MATCH ()-[r:IS_LOCATED]-()
-DELETE r
+MATCH ()-[r:IS_LOCATED]-() DELETE r
+
+CALL apoc.periodic.iterate("MATCH ()-[r:MOVES_TO]-() return r","with r  DELETE r", {batchSize:1000,iterateList:true, parallel:false})
 
 
-CALL apoc.periodic.iterate(
-"MATCH ()-[r:MOVES_TO]-() return r",
-"with r  DELETE r", {batchSize:1000,iterateList:true, parallel:false})
-
+--------
 
 CALL spatial.addWKTLayer('layer_curitiba_neighbourhoods','geometry')
 
-USING PERIODIC COMMIT 1000000
-LOAD CSV WITH HEADERS FROM "file:///events.csv" AS row
-CREATE(p:Position)
-SET p.vehicle = row.veic
-,p.event_timestamp = datetime(row.event_timestamp)
-,p.date = row.date
-,p.line_code = row.cod_linha
-,p.geometry  = 'POINT(' + row.lon +' '+ row.lat +')'
-,p.latitude  = toFloat(row.lat)
-,p.longitude = toFloat(row.lon);
 
-create index on :Position(vehicle,line_code,date )
+-- LOAD SECTIONS
+LOAD CSV WITH HEADERS FROM "file:///distritos.csv" AS row  FIELDTERMINATOR ';'
+CREATE (s:Section)
+    set   s.geometry     = row.WKT
+         ,s.section_name = row.DISTRITO
+WITH s
+CALL spatial.addNode('layer_curitiba_neighbourhoods',s) YIELD node
+RETURN node;
+
 
 -- LOAD NEIGHBOURHOODS
 LOAD CSV WITH HEADERS FROM "file:///bairros.csv" AS row  FIELDTERMINATOR ';'
@@ -36,7 +31,6 @@ CREATE (n:Neighbourhood)
 WITH n
 CALL spatial.addNode('layer_curitiba_neighbourhoods',n) YIELD node
 RETURN node;
-
 
 -- LOAD HEALTH STATIONS
 LOAD CSV WITH HEADERS FROM "file:///unidades-saude.csv" AS row
@@ -56,7 +50,28 @@ CALL spatial.addNode('layer_curitiba_neighbourhoods',p) YIELD node
 RETURN node;
 
 
-match (p:Poi)-[:IS_LOCATED]->(n:Neighbourhood) set p.section_name = n.section_name
+-- create a relationship between health stations and sections
+MATCH (p:Poi )
+WITH collect(p) as pois
+   UNWIND pois as poi
+       call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(poi.longitude),lat:toFloat(poi.latitude)},0.0001) yield node,distance
+       with poi,  node  as n where 'Section' IN LABELS(n)
+       merge (poi)-[r:IS_LOCATED]->(n)  return poi,r,n
+
+
+match (p:Poi)-[:IS_LOCATED]->(s:Section) set p.section_name = s.section_name
+
+
+-- create a relationship between health stations and neighbourhoods
+MATCH (p:Poi )
+WITH collect(p) as pois
+   UNWIND pois as poi
+       call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(poi.longitude),lat:toFloat(poi.latitude)},0.0001) yield node,distance
+       with poi,  node  as n where 'Neighbourhood' IN LABELS(n)
+       merge (poi)-[r:IS_LOCATED]->(n)  return poi,r,n
+
+
+match (p:Poi)-[:IS_LOCATED]->(n:Neighbourhood) set p.neighbourhood = n.name
 
 
 -- LOAD BUS STOPS
@@ -73,9 +88,8 @@ WITH bs
 CALL spatial.addNode('layer_curitiba_neighbourhoods',bs) YIELD node
 RETURN node;
 
-match (bs:BusStop)-[:IS_LOCATED]->(n:Neighbourhood) set bs.section_name = n.section_name , bs.neighbourhood = n.name
 
-USING PERIODIC COMMIT 10000
+USING PERIODIC COMMIT 500
 LOAD CSV WITH HEADERS FROM "file:///routes.csv" AS row
 MATCH(bss: BusStop {number: row.ponto_inicio}), (bse: BusStop {number: row.ponto_final})
 CREATE(bss) - [: NEXT_STOP {
@@ -89,24 +103,44 @@ CREATE(bss) - [: NEXT_STOP {
 
 
 MATCH (p1:BusStop)-[r:NEXT_STOP]->(p2:BusStop)
-SET r.distance = distance(point({longitude: toFloat(p1.longitude),latitude: toFloat(p1.latitude) ,crs: 'wgs-84'}) ,point({longitude: toFloat(p2.longitude),latitude: toFloat(p2.latitude) ,crs: 'wgs-84'}))
+SET r.distance = distance(point({longitude: toFloat(p1.longitude),latitude: toFloat(p1.latitude) ,crs: 'wgs-84'})
+,point({longitude: toFloat(p2.longitude),latitude: toFloat(p2.latitude) ,crs: 'wgs-84'}))
 
 
--- create a relationship between health stations and neighbourhood
-MATCH (p:Poi )
-WITH collect(p) as pois
-   UNWIND pois as poi
-       call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(poi.longitude),lat:toFloat(poi.latitude)},0.0001) yield node,distance
-       with poi,  node  as n where 'Neighbourhood' IN LABELS(n)
-       merge (poi)-[r:IS_LOCATED]->(n)  return poi,r,n
+
+call apoc.periodic.commit("
+MATCH (bus_stop:BusStop ) WHERE NOT (bus_stop)-[:IS_IN_SECTION]->() with bus_stop limit {limit}
+call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(bus_stop.longitude),lat:toFloat(bus_stop.latitude)},0.0001) yield node,distance
+with bus_stop, node as n where 'Section' IN LABELS(n)  merge (bus_stop)-[r:IS_IN_SECTION]->(n)  return count(bus_stop)",{limit:500})
+
+match (bs:BusStop)-[:IS_IN_SECTION]->(s:Section) set bs.section_name = s.section_name
+
+
 
 
 -- create a relationship between bust_stop and neighbourhood
 call apoc.periodic.commit("
-MATCH (bus_stop:BusStop ) WHERE NOT (bus_stop)-[:IS_LOCATED]->() with bus_stop limit {limit}
+MATCH (bus_stop:BusStop ) WHERE NOT (bus_stop)-[:IS_LOCATED]->(s:Section) with bus_stop limit {limit}
 call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(bus_stop.longitude),lat:toFloat(bus_stop.latitude)},0.0001) yield node,distance
-with bus_stop, node as n where 'Neighbourhood' IN LABELS(n)  merge (bus_stop)-[r:IS_LOCATED]->(n)  return count(bus_stop)",{limit:500})
+with bus_stop, node as n where 'Section' IN LABELS(n)  merge (bus_stop)-[r:IS_LOCATED]->(n)  return count(bus_stop)",{limit:500})
 
+
+match (bs:BusStop)-[:IS_LOCATED]->(n:Neighbourhood) set bs.section_name = n.section_name , bs.neighbourhood = n.name
+
+
+
+USING PERIODIC COMMIT 100000
+LOAD CSV WITH HEADERS FROM "file:///events.csv" AS row
+CREATE(p:Position)
+SET p.vehicle = row.veic
+,p.event_timestamp = datetime(row.event_timestamp)
+,p.date = row.date
+,p.line_code = row.cod_linha
+,p.geometry  = 'POINT(' + row.lon +' '+ row.lat +')'
+,p.latitude  = toFloat(row.lat)
+,p.longitude = toFloat(row.lon);
+
+create index on :Position(vehicle,line_code,date )
 
 
 CALL apoc.periodic.iterate(
@@ -123,7 +157,8 @@ CREATE (bs)-[:WALK]->(poi)
 
 
 MATCH (bs:BusStop)-[r:WALK]->(poi:Poi)
-SET r.distance= distance(point({longitude: toFloat(poi.longitude),latitude: toFloat(poi.latitude) ,crs: 'wgs-84'}) ,point({longitude: toFloat(bs.longitude),latitude: toFloat(bs.latitude) ,crs: 'wgs-84'}))
+SET r.distance= distance(point({longitude: toFloat(poi.longitude),latitude: toFloat(poi.latitude) ,crs: 'wgs-84'})
+,point({longitude: toFloat(bs.longitude),latitude: toFloat(bs.latitude) ,crs: 'wgs-84'}))
 
 // MATCH (p:BusStop)-[r:WALK]->(poi:Poi)
 // SET r.distance=round((2 * 6371 * asin(sqrt(haversin(radians(toFloat(p.latitude) - toFloat(poi.latitude)))
@@ -152,10 +187,12 @@ CALL apoc.algo.dijkstra(bs, poi, 'NEXT_STOP|WALK', 'distance') YIELD weight
 RETURN bs.section_name as regional
       ,bs.neighbourhood as bairro
       ,bs.number AS numero
+      ,bs.name as bus_stop
       ,bs.latitude as latitude
       ,bs.longitude as longitude
       ,poi.name as nome_us
       ,poi.section_name,poi.latitude as us_latitude, poi.longitude as us_longitude, min(weight) as distancia
+
 
 
 MATCH (p:PontoLinha),(poi:Poi{categoria:'Unidade Saude Basica',source:'planilha'})
