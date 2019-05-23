@@ -107,25 +107,22 @@ SET r.distance = distance(point({longitude: toFloat(p1.longitude),latitude: toFl
 ,point({longitude: toFloat(p2.longitude),latitude: toFloat(p2.latitude) ,crs: 'wgs-84'}))
 
 
-
 call apoc.periodic.commit("
 MATCH (bus_stop:BusStop ) WHERE NOT (bus_stop)-[:IS_IN_SECTION]->() with bus_stop limit {limit}
-call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(bus_stop.longitude),lat:toFloat(bus_stop.latitude)},0.0001) yield node,distance
+call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(bus_stop.longitude),lat:toFloat(bus_stop.latitude)},0.0010) yield node,distance
 with bus_stop, node as n where 'Section' IN LABELS(n)  merge (bus_stop)-[r:IS_IN_SECTION]->(n)  return count(bus_stop)",{limit:500})
 
 match (bs:BusStop)-[:IS_IN_SECTION]->(s:Section) set bs.section_name = s.section_name
 
 
-
-
 -- create a relationship between bust_stop and neighbourhood
 call apoc.periodic.commit("
-MATCH (bus_stop:BusStop ) WHERE NOT (bus_stop)-[:IS_LOCATED]->(s:Section) with bus_stop limit {limit}
+MATCH (bus_stop:BusStop ) WHERE NOT (bus_stop)-[:IS_LOCATED]->() with bus_stop limit {limit}
 call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(bus_stop.longitude),lat:toFloat(bus_stop.latitude)},0.0001) yield node,distance
-with bus_stop, node as n where 'Section' IN LABELS(n)  merge (bus_stop)-[r:IS_LOCATED]->(n)  return count(bus_stop)",{limit:500})
+with bus_stop, node as n where 'Neighbourhood' IN LABELS(n)  merge (bus_stop)-[r:IS_LOCATED]->(n)  return count(bus_stop)",{limit:500})
 
 
-match (bs:BusStop)-[:IS_LOCATED]->(n:Neighbourhood) set bs.section_name = n.section_name , bs.neighbourhood = n.name
+match (bs:BusStop)-[:IS_LOCATED]->(n:Neighbourhood) set bs.neighbourhood = n.name
 
 
 
