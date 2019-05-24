@@ -51,15 +51,14 @@ RETURN node;
 
 
 -- create a relationship between health stations and sections
-MATCH (p:Poi )
-WITH collect(p) as pois
-   UNWIND pois as poi
-       call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(poi.longitude),lat:toFloat(poi.latitude)},0.0001) yield node,distance
-       with poi,  node  as n where 'Section' IN LABELS(n)
-       merge (poi)-[r:IS_LOCATED]->(n)  return poi,r,n
-
-
-match (p:Poi)-[:IS_LOCATED]->(s:Section) set p.section_name = s.section_name
+// MATCH (p:Poi )
+// WITH collect(p) as pois
+//    UNWIND pois as poi
+//        call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(poi.longitude),lat:toFloat(poi.latitude)},0.0001) yield node,distance
+//        with poi,  node  as n where 'Section' IN LABELS(n)
+//        merge (poi)-[r:IS_IN_SECTION]->(n)  return poi,r,n
+//
+// match (p:Poi)-[:IS_IN_SECTION]->(s:Section) set p.section_name = s.section_name
 
 
 -- create a relationship between health stations and neighbourhoods
@@ -68,14 +67,16 @@ WITH collect(p) as pois
    UNWIND pois as poi
        call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(poi.longitude),lat:toFloat(poi.latitude)},0.0001) yield node,distance
        with poi,  node  as n where 'Neighbourhood' IN LABELS(n)
-       merge (poi)-[r:IS_LOCATED]->(n)  return poi,r,n
+       merge (poi)-[r:IS_IN_NEIGHBOURHOOD]->(n)  return poi,r,n
 
 
-match (p:Poi)-[:IS_LOCATED]->(n:Neighbourhood) set p.neighbourhood = n.name
+match (p:Poi)-[:IS_IN_NEIGHBOURHOOD]->(n:Neighbourhood) set p.neighbourhood = n.name ,p.section_name = n.section_name
+
+match(p:Poi {section_name:'REGIONAL SANTA FELICIDADE / REGIONAL PORTAO'}) set p.section_name='REGIONAL SANTA FELICIDADE'
 
 
 -- LOAD BUS STOPS
-USING PERIODIC COMMIT 500
+USING PERIODIC COMMIT 1000
 LOAD CSV WITH HEADERS FROM "file:///bus-stop.csv" AS row
 create (bs:BusStop)
 set bs.name       = row.nome
@@ -88,8 +89,8 @@ WITH bs
 CALL spatial.addNode('layer_curitiba_neighbourhoods',bs) YIELD node
 RETURN node;
 
-
-USING PERIODIC COMMIT 500
+//TODO: IMPROVE PERFORMANCE
+USING PERIODIC COMMIT 100
 LOAD CSV WITH HEADERS FROM "file:///routes.csv" AS row
 MATCH(bss: BusStop {number: row.ponto_inicio}), (bse: BusStop {number: row.ponto_final})
 CREATE(bss) - [: NEXT_STOP {
@@ -107,23 +108,50 @@ SET r.distance = distance(point({longitude: toFloat(p1.longitude),latitude: toFl
 ,point({longitude: toFloat(p2.longitude),latitude: toFloat(p2.latitude) ,crs: 'wgs-84'}))
 
 
-call apoc.periodic.commit("
-MATCH (bus_stop:BusStop ) WHERE NOT (bus_stop)-[:IS_IN_SECTION]->() with bus_stop limit {limit}
-call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(bus_stop.longitude),lat:toFloat(bus_stop.latitude)},0.0010) yield node,distance
-with bus_stop, node as n where 'Section' IN LABELS(n)  merge (bus_stop)-[r:IS_IN_SECTION]->(n)  return count(bus_stop)",{limit:500})
-
-match (bs:BusStop)-[:IS_IN_SECTION]->(s:Section) set bs.section_name = s.section_name
-
-
+//TODO: IMPROVE PERFORMANCE
 -- create a relationship between bust_stop and neighbourhood
 call apoc.periodic.commit("
-MATCH (bus_stop:BusStop ) WHERE NOT (bus_stop)-[:IS_LOCATED]->() with bus_stop limit {limit}
+      MATCH (bus_stop:BusStop ) WHERE NOT (bus_stop)-[:IS_IN_NEIGHBOURHOOD]->() with bus_stop limit {limit}
+      CALL spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(bus_stop.longitude),lat:toFloat(bus_stop.latitude)},0.0001) yield node,distance
+      WITH bus_stop, node as n where 'Neighbourhood' IN LABELS(n)  merge (bus_stop)-[r:IS_IN_NEIGHBOURHOOD]->(n)  return count(bus_stop)",{limit:100})
+
+match (bs:BusStop)-[:IS_IN_NEIGHBOURHOOD]->(n:Neighbourhood) set bs.section_name = n.section_name, bs.neighbourhood = n.name
+
+
+MATCH (bus_stop:BusStop {section_name:'REGIONAL SANTA FELICIDADE / REGIONAL PORTAO'})
 call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(bus_stop.longitude),lat:toFloat(bus_stop.latitude)},0.0001) yield node,distance
-with bus_stop, node as n where 'Neighbourhood' IN LABELS(n)  merge (bus_stop)-[r:IS_LOCATED]->(n)  return count(bus_stop)",{limit:500})
+with bus_stop, node as n where 'Section' IN LABELS(n)  match(bus_stop) set bus_stop.section_name = n.section_name
+
+match(bs:BusStop {section_name:'REGIONAL BOQUEIR�O'}) set bs.section_name='REGIONAL BOQUEIRAO'
+match (bs:BusStop {section_name:'PORT�O'})  set bs.section_name='REGIONAL PORTAO'
+match (bs:BusStop {section_name:'SANTA FELICIDADE'})  set bs.section_name='REGIONAL SANTA FELICIDADE'
+match (bs:BusStop {section_name:'CIC'})  set bs.section_name='REGIONAL CIC'
+
+match(bs:BusStop {neighbourhood:'CAMPO COMPRIDO',section_name:'REGIONAL CIC'}) set bs.section_name='REGIONAL SANTA FELICIDADE'
 
 
-match (bs:BusStop)-[:IS_LOCATED]->(n:Neighbourhood) set bs.neighbourhood = n.name
 
+// call apoc.periodic.commit("
+// MATCH (bus_stop:BusStop ) WHERE NOT (bus_stop)-[:IS_IN_SECTION]->() with bus_stop limit {limit}
+// call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(bus_stop.longitude),lat:toFloat(bus_stop.latitude)},0.0001) yield node,distance
+// with bus_stop, node as n where 'Section' IN LABELS(n)  merge (bus_stop)-[r:IS_IN_SECTION]->(n)  return count(bus_stop)",{limit:500})
+//
+//
+// match (bs:BusStop)-[:IS_IN_SECTION]->(s:Section) set bs.section_name = s.section_name
+
+
+MATCH (poi:Poi{category:'Unidade Saude Basica',source:'planilha'}),(bs:BusStop)
+WHERE distance(point({longitude: toFloat(poi.longitude),latitude: toFloat(poi.latitude) ,crs: 'wgs-84'}) ,point({longitude: toFloat(bs.longitude),latitude: toFloat(bs.latitude) ,crs: 'wgs-84'})) < 2000
+MERGE (bs)-[:WALK]->(poi)
+
+
+MATCH (bs:BusStop)-[r:WALK]->(poi:Poi)
+SET r.distance= distance(point({longitude: toFloat(poi.longitude),latitude: toFloat(poi.latitude) ,crs: 'wgs-84'})
+,point({longitude: toFloat(bs.longitude),latitude: toFloat(bs.latitude) ,crs: 'wgs-84'}))
+
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 USING PERIODIC COMMIT 100000
@@ -146,20 +174,6 @@ RETURN ps,pf, distance(ps.coordinates,pf.coordinates) as delta_distance,
  (datetime(pf.event_timestamp).epochMillis - datetime(ps.event_timestamp).epochMillis)/1000 as delta_time",
 "MATCH (ps)-[m:MOVES_TO]->(pf) SET m.delta_distance = delta_distance, m.delta_time = delta_time", {batchSize:1000000,iterateList:true, parallel:false})
 
-
-MATCH (poi:Poi{category:'Unidade Saude Basica',source:'planilha'}),(bs:BusStop)
-WHERE distance(point({longitude: toFloat(poi.longitude),latitude: toFloat(poi.latitude) ,crs: 'wgs-84'}) ,point({longitude: toFloat(bs.longitude),latitude: toFloat(bs.latitude) ,crs: 'wgs-84'})) < 500
-CREATE (bs)-[:WALK]->(poi)
-
-
-
-MATCH (bs:BusStop)-[r:WALK]->(poi:Poi)
-SET r.distance= distance(point({longitude: toFloat(poi.longitude),latitude: toFloat(poi.latitude) ,crs: 'wgs-84'})
-,point({longitude: toFloat(bs.longitude),latitude: toFloat(bs.latitude) ,crs: 'wgs-84'}))
-
-// MATCH (p:BusStop)-[r:WALK]->(poi:Poi)
-// SET r.distance=round((2 * 6371 * asin(sqrt(haversin(radians(toFloat(p.latitude) - toFloat(poi.latitude)))
-// + cos(radians(toFloat(p.latitude)))* cos(radians(toFloat(poi.latitude)))* haversin(radians(toFloat(p.longitude) - toFloat(poi.longitude))))))*100)/100
 
 
 // call apoc.periodic.commit("
