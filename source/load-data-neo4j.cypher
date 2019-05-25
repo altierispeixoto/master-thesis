@@ -1,78 +1,105 @@
-MATCH (n) DETACH DELETE n
-
-MATCH ()-[r:IS_LOCATED]-() DELETE r
-
-CALL apoc.periodic.iterate("MATCH ()-[r:MOVES_TO]-() return r","with r  DELETE r", {batchSize:1000,iterateList:true, parallel:false})
-
-
---------
-
-CALL spatial.addWKTLayer('layer_curitiba_neighbourhoods','geometry')
+CALL spatial.addWKTLayer('layer_curitiba','geometry')
 
 
 -- LOAD SECTIONS
-LOAD CSV WITH HEADERS FROM "file:///distritos.csv" AS row  FIELDTERMINATOR ';'
+LOAD CSV WITH HEADERS FROM "file:///section.csv" AS row
 CREATE (s:Section)
     set   s.geometry     = row.WKT
-         ,s.section_name = row.DISTRITO
+         ,s.section_name = row.NOME
 WITH s
-CALL spatial.addNode('layer_curitiba_neighbourhoods',s) YIELD node
+CALL spatial.addNode('layer_curitiba',s) YIELD node
 RETURN node;
 
 
 -- LOAD NEIGHBOURHOODS
-LOAD CSV WITH HEADERS FROM "file:///bairros.csv" AS row  FIELDTERMINATOR ';'
+LOAD CSV WITH HEADERS FROM "file:///neighbourhood.csv" AS row
 CREATE (n:Neighbourhood)
-    set        n.type         = row.TIPO
-              ,n.name         = row.NOME
-              ,n.geometry     = row.WKT
-              ,n.section_code = row.CD_REGIONA
-              ,n.section_name = row.NM_REGIONA
+    set
+         n.name         = row.NOME
+        ,n.geometry     = row.WKT
+        ,n.section_name = row.NM_REGIONAL
 WITH n
-CALL spatial.addNode('layer_curitiba_neighbourhoods',n) YIELD node
+CALL spatial.addNode('layer_curitiba',n) YIELD node
 RETURN node;
+
 
 -- LOAD HEALTH STATIONS
 LOAD CSV WITH HEADERS FROM "file:///unidades-saude.csv" AS row
-CREATE (p:Poi)
+CREATE (p:Poi:HealthStation)
     set        p.category      = row.categoria
               ,p.name          = row.nome
               ,p.address       = row.endereco
               ,p.geometry      = 'POINT('+row.longitude +' '+row.latitude+')'
-              ,p.height        = row.elevacao
               ,p.neighbourhood = row.bairro
-              ,p.district      = row.distrito
-              ,p.source        = 'planilha'
+              ,p.section_name  = row.distrito
               ,p.latitude      = row.latitude
               ,p.longitude     = row.longitude
 WITH p
-CALL spatial.addNode('layer_curitiba_neighbourhoods',p) YIELD node
+CALL spatial.addNode('layer_curitiba',p) YIELD node
 RETURN node;
 
 
--- create a relationship between health stations and sections
-// MATCH (p:Poi )
-// WITH collect(p) as pois
-//    UNWIND pois as poi
-//        call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(poi.longitude),lat:toFloat(poi.latitude)},0.0001) yield node,distance
-//        with poi,  node  as n where 'Section' IN LABELS(n)
-//        merge (poi)-[r:IS_IN_SECTION]->(n)  return poi,r,n
-//
-// match (p:Poi)-[:IS_IN_SECTION]->(s:Section) set p.section_name = s.section_name
-
-
 -- create a relationship between health stations and neighbourhoods
-MATCH (p:Poi )
+MATCH (p:Poi)
 WITH collect(p) as pois
    UNWIND pois as poi
-       call spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(poi.longitude),lat:toFloat(poi.latitude)},0.0001) yield node,distance
+       call spatial.withinDistance('layer_curitiba',{lon:toFloat(poi.longitude),lat:toFloat(poi.latitude)},0.0001) yield node,distance
        with poi,  node  as n where 'Neighbourhood' IN LABELS(n)
        merge (poi)-[r:IS_IN_NEIGHBOURHOOD]->(n)  return poi,r,n
 
+match (p:Poi)-[:IS_IN_NEIGHBOURHOOD]->(n:Neighbourhood) set p.neighbourhood = n.name
 
-match (p:Poi)-[:IS_IN_NEIGHBOURHOOD]->(n:Neighbourhood) set p.neighbourhood = n.name ,p.section_name = n.section_name
 
-match(p:Poi {section_name:'REGIONAL SANTA FELICIDADE / REGIONAL PORTAO'}) set p.section_name='REGIONAL SANTA FELICIDADE'
+-- create a relationship between health stations and sections
+MATCH (p:Poi)
+WITH collect(p) as pois
+   UNWIND pois as poi
+       call spatial.withinDistance('layer_curitiba',{lon:toFloat(poi.longitude),lat:toFloat(poi.latitude)},0.0001) yield node,distance
+       with poi,  node  as n where 'Section' IN LABELS(n)
+       merge (poi)-[r:IS_IN_SECTION]->(n)  return poi,r,n
+
+match (p:Poi)-[:IS_IN_SECTION]->(s:Section) set p.section_name = s.section_name
+
+
+-- LOAD BUS TERMINAL STATIONS
+LOAD CSV WITH HEADERS FROM "file:///bus-terminal-station.csv" AS row
+CREATE (ts:TerminalStation)
+    set   ts.geometry        = row.WKT
+          ,ts.name           = row.NOME_MAPA
+          ,ts.neighbourhood  = row.BAIRRO
+          ,ts.section_name   = row.REGIONAL
+          ,ts.latitude       = row.LATITUDE
+          ,ts.longitude      = row.LONGITUDE
+WITH ts
+CALL spatial.addNode('layer_curitiba',ts) YIELD node
+RETURN node;
+
+
+-- create a relationship between bus terminal stations and neighbourhoods
+MATCH (t:TerminalStation)
+WITH collect(t) as terminalStations
+   UNWIND terminalStations as ts
+       call spatial.withinDistance('layer_curitiba',{lon:toFloat(ts.longitude),lat:toFloat(ts.latitude)},0.0001) yield node,distance
+       with ts, node  as n where 'Neighbourhood' IN LABELS(n)
+       merge (ts)-[r:IS_IN_NEIGHBOURHOOD]->(n)  return ts,r,n
+
+match (ts:TerminalStation)-[:IS_IN_NEIGHBOURHOOD]->(n:Neighbourhood) set ts.neighbourhood = n.name
+
+
+-- create a relationship between health stations and sections
+MATCH (t:TerminalStation)
+WITH collect(t) as terminalStations
+   UNWIND terminalStations as ts
+       call spatial.withinDistance('layer_curitiba',{lon:toFloat(ts.longitude),lat:toFloat(ts.latitude)},0.0001) yield node,distance
+       with ts,  node  as n where 'Section' IN LABELS(n)
+       merge (ts)-[r:IS_IN_SECTION]->(n)  return ts,r,n
+
+match (ts:TerminalStation)-[:IS_IN_SECTION]->(s:Section) set ts.section_name = s.section_name
+
+
+
+-----------------------------------------------------------------------
+
 
 
 -- LOAD BUS STOPS
@@ -127,7 +154,7 @@ match (bs:BusStop {section_name:'PORT�O'})  set bs.section_name='REGIONAL PORT
 match (bs:BusStop {section_name:'SANTA FELICIDADE'})  set bs.section_name='REGIONAL SANTA FELICIDADE'
 match (bs:BusStop {section_name:'CIC'})  set bs.section_name='REGIONAL CIC'
 
-match(bs:BusStop {neighbourhood:'CAMPO COMPRIDO',section_name:'REGIONAL CIC'}) set bs.section_name='REGIONAL SANTA FELICIDADE'
+match(bs:BusStop {neighbourhood:'CAMPO COMPRIDO',section_puC'}) set bs.section_name='REGIONAL SANTA FELICIDADE'
 
 
 
