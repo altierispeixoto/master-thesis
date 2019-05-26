@@ -97,11 +97,6 @@ WITH collect(t) as terminalStations
 match (ts:TerminalStation)-[:IS_IN_SECTION]->(s:Section) set ts.section_name = s.section_name
 
 
-
------------------------------------------------------------------------
-
-
-
 -- LOAD BUS STOPS
 USING PERIODIC COMMIT 1000
 LOAD CSV WITH HEADERS FROM "file:///bus-stop.csv" AS row
@@ -113,11 +108,12 @@ set bs.name       = row.nome
     ,bs.latitude  = row.lat
     ,bs.longitude = row.lon
 WITH bs
-CALL spatial.addNode('layer_curitiba_neighbourhoods',bs) YIELD node
+CALL spatial.addNode('layer_curitiba',bs) YIELD node
 RETURN node;
 
+
 //TODO: IMPROVE PERFORMANCE
-USING PERIODIC COMMIT 100
+USING PERIODIC COMMIT 500
 LOAD CSV WITH HEADERS FROM "file:///routes.csv" AS row
 MATCH(bss: BusStop {number: row.ponto_inicio}), (bse: BusStop {number: row.ponto_final})
 CREATE(bss) - [: NEXT_STOP {
@@ -131,16 +127,164 @@ CREATE(bss) - [: NEXT_STOP {
 
 
 MATCH (p1:BusStop)-[r:NEXT_STOP]->(p2:BusStop)
-SET r.distance = distance(point({longitude: toFloat(p1.longitude),latitude: toFloat(p1.latitude) ,crs: 'wgs-84'})
-,point({longitude: toFloat(p2.longitude),latitude: toFloat(p2.latitude) ,crs: 'wgs-84'}))
+SET r.distance = distance(point({longitude: toFloat(p1.longitude),latitude: toFloat(p1.latitude) ,crs: 'wgs-84'}),point({longitude: toFloat(p2.longitude),latitude: toFloat(p2.latitude) ,crs: 'wgs-84'}))
+
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL PORTÃO"}),(bs:BusStop) where bs.name contains "Terminal Port?o"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL CAPÃO RASO"}),(bs:BusStop) where bs.name contains "Terminal Cap?o Raso"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL PINHEIRINHO"}),(bs:BusStop) where bs.name contains "Terminal Pinheirinho"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL HAUER"}),(bs:BusStop) where bs.name contains "Terminal Hauer"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL CABRAL"}),(bs:BusStop) where bs.name contains "Terminal Cabral"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL CAMPO COMPRIDO"}),(bs:BusStop) where bs.name contains "Terminal Campo Comprido"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL SANTA FELICIDADE"}),(bs:BusStop) where bs.name contains "Terminal Santa Felicidade"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL OFICINAS"}),(bs:BusStop) where bs.name contains "Terminal Oficinas"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL CAMPINA DO SIQUEIRA"}),(bs:BusStop) where bs.name contains "Terminal Campina do Siqueira"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL SANTA CÂNDIDA"}),(bs:BusStop) where bs.name contains "Terminal Santa Candida"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL CAIUÁ"}),(bs:BusStop) where bs.name contains "Terminal Caiua"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL BOQUEIRÃO"}),(bs:BusStop) where bs.name contains "Terminal Boqueir?o"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL FAZENDINHA"}),(bs:BusStop) where bs.name contains "Terminal Fazendinha"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL SÍTIO CERCADO"}),(bs:BusStop) where bs.name contains "Terminal Sitio Cercado"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL BAIRRO ALTO"}),(bs:BusStop) where bs.name contains "Terminal Bairro Alto"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL CIC"}),(bs:BusStop) where bs.name contains "Terminal CIC"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL CENTENÁRIO"}),(bs:BusStop) where bs.name contains "Terminal Centenario"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL BOA VISTA"}),(bs:BusStop) where bs.name contains "Terminal Boa Vista"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL CARMO"}),(bs:BusStop) where bs.name contains "Terminal Carmo"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL CAPÃO DA IMBUIA"}),(bs:BusStop) where bs.name contains "Terminal Cap?o da Imbuia"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL GUADALUPE"}),(bs:BusStop) where bs.name contains "Terminal Guadalupe"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
+
+MATCH(ts:TerminalStation {name:"TERMINAL BARREIRINHA"}),(bs:BusStop) where bs.name contains "Terminal Barreirinha"
+with bs,ts
+merge (bs)-[r:IS_IN_TERMINAL]->(ts)
+return bs,r,ts
+
 
 
 //TODO: IMPROVE PERFORMANCE
 -- create a relationship between bust_stop and neighbourhood
 call apoc.periodic.commit("
-      MATCH (bus_stop:BusStop ) WHERE NOT (bus_stop)-[:IS_IN_NEIGHBOURHOOD]->() with bus_stop limit {limit}
-      CALL spatial.withinDistance('layer_curitiba_neighbourhoods',{lon:toFloat(bus_stop.longitude),lat:toFloat(bus_stop.latitude)},0.0001) yield node,distance
-      WITH bus_stop, node as n where 'Neighbourhood' IN LABELS(n)  merge (bus_stop)-[r:IS_IN_NEIGHBOURHOOD]->(n)  return count(bus_stop)",{limit:100})
+      MATCH (bs:BusStop ) WHERE NOT (bs)-[:IS_IN_NEIGHBOURHOOD]->() with bs limit {limit}
+      CALL spatial.withinDistance('layer_curitiba',{lon:toFloat(bs.longitude),lat:toFloat(bs.latitude)},0.0001) yield node,distance
+      WITH bs, node as n where 'Neighbourhood' IN LABELS(n)  merge (bs)-[r:IS_IN_NEIGHBOURHOOD]->(n)  return count(bs)",{limit:100})
+
+
+
+-----------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
 
 match (bs:BusStop)-[:IS_IN_NEIGHBOURHOOD]->(n:Neighbourhood) set bs.section_name = n.section_name, bs.neighbourhood = n.name
 
