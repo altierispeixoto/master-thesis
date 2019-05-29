@@ -15,9 +15,9 @@ class ETLSpark:
     def __init__(self):
         self.conf = SparkConf().setAppName("App")
         self.conf = (self.conf.setMaster('local[*]')
-                     .set('spark.executor.memory', '4G')
-                     .set('spark.driver.memory', '30G')
-                     .set('spark.driver.maxResultSize', '10G'))
+                     .set('spark.executor.memory', '2G')
+                     .set('spark.driver.memory', '6G')
+                     .set('spark.driver.maxResultSize', '3G'))
 
         self.sc = SparkContext.getOrCreate(conf=self.conf)
         self.sqlContext = SQLContext(self.sc)
