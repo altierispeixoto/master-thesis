@@ -1,22 +1,19 @@
 # %% markdown
 # #### **INIT SPARK CONTEXT AND SET CONFIGURATIONS**
 # %%
-
 import findspark
 findspark.init('/usr/local/spark')
-
-import sys
-import os
-from pyspark.sql.window import Window
-from pyspark.sql import functions
-from pyspark.sql import SQLContext
-from pyspark.context import SparkContext
+from pyspark.sql.types import DoubleType, StringType
 from pyspark.conf import SparkConf
-import random
+from pyspark.context import SparkContext
+from pyspark.sql import SQLContext
+from pyspark.sql import functions
+from pyspark.sql.window import Window
+import os
+import sys
 
 
-import pyspark
-from pyspark.sql.types import DoubleType,StringType
+
 # %%
 
 conf = SparkConf().setAppName("App")
@@ -61,22 +58,20 @@ executeQuery('veiculos').toPandas().head(2)
 tabelaVeiculo.select(['cod_ponto', 'horario']).filter(
     "cod_linha == 507").show()
 
-
  #and hour in (6,7)
  #.filter("cod_linha == 507 ")  \
-events_507 = position_events.select('cod_linha','veic','lat', 'lon', functions.date_format(functions.unix_timestamp('dthr', 'dd/MM/yyyy HH:mm:ss')
+events_507 = position_events.select('cod_linha', 'veic', 'lat', 'lon', functions.date_format(functions.unix_timestamp('dthr', 'dd/MM/yyyy HH:mm:ss')
                                                                                 .cast('timestamp'), "yyyy-MM-dd HH:mm:ss").alias('event_timestamp')) \
-            .withColumn("year",  functions.year(functions.col('event_timestamp')) )  \
-            .withColumn("month",  functions.month(functions.col('event_timestamp')) )  \
-            .withColumn("day",  functions.dayofmonth(functions.col('event_timestamp')) )  \
-            .withColumn("hour",  functions.hour(functions.col('event_timestamp')) )  \
-            .withColumn("minute",  functions.minute(functions.col('event_timestamp')) )  \
-            .withColumn("second",  functions.second(functions.col('event_timestamp')) )  \
+            .withColumn("year",  functions.year(functions.col('event_timestamp')))  \
+            .withColumn("month",  functions.month(functions.col('event_timestamp')))  \
+            .withColumn("day",  functions.dayofmonth(functions.col('event_timestamp')))  \
+            .withColumn("hour",  functions.hour(functions.col('event_timestamp')))  \
+            .withColumn("minute",  functions.minute(functions.col('event_timestamp')))  \
+            .withColumn("second",  functions.second(functions.col('event_timestamp')))  \
             .sort(functions.asc("event_timestamp"))
 
 
-
-windowSpec = Window.partitionBy('cod_linha','veic').orderBy('event_timestamp')
+windowSpec = Window.partitionBy('cod_linha', 'veic').orderBy('event_timestamp')
 
 
 scriptpath = "/home/altieris/master-thesis/source/fromnotebooks/src/"
@@ -112,10 +107,10 @@ def haversine(lon1, lat1, lon2, lat2):
 
 
 def create_flag_status(delta_velocity):
-     if delta_velocity is not None and delta_velocity > 5:
-         return 'MOVING'
-     else:
-         return 'STOPPED'
+    if delta_velocity is not None and delta_velocity > 5:
+        return 'MOVING'
+    else:
+        return 'STOPPED'
 
 
 apply_haversine = functions.udf(lambda lon0, lat0, lon1, lat1, : haversine(
@@ -138,7 +133,13 @@ events_processed.show(10)
 query = """
     select evt.cod_linha
           ,evt.veic as vehicle
-          ,evt.event_timestamp as last_stop
+          ,evt.event_timestamp as stop_timestamp
+          ,evt.year
+          ,evt.month
+          ,evt.day
+          ,evt.hour
+          ,evt.minute
+          ,evt.second
           ,evt.lat as latitude
           ,evt.lon as longitude
      from events_processed evt
@@ -147,6 +148,8 @@ query = """
 """
 
 target_path = '/home/altieris/datascience/data/urbs/processed/stopevents/'
+
+#sqlContext.sql(query).show(10)
 
 sqlContext.sql(query).coalesce(1).write.mode('overwrite').option("header", "true").format("csv").save(target_path)
 
@@ -170,7 +173,10 @@ trips as (
           ,st.last_stop
           ,st.current_stop
      from events_processed evp,stops st
-     where (evp.event_timestamp between st.last_stop and st.current_stop) and (evp.veic = st.veic) and (evp.cod_linha = st.cod_linha)
+     where
+            (evp.event_timestamp between st.last_stop and st.current_stop)
+            and (evp.veic = st.veic)
+            and (evp.cod_linha = st.cod_linha)
     group by evp.cod_linha,evp.veic, st.last_stop, st.current_stop
     order by evp.cod_linha,evp.veic, st.last_stop, st.current_stop
 )

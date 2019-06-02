@@ -287,6 +287,37 @@ with bs, node as n where 'Section' IN LABELS(n)  merge (bs)-[r:IS_IN_SECTION]->(
 match (bs:BusStop)-[:IS_IN_SECTION]->(s:Section) set bs.section_name = s.section_name
 
 
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM "file:///stop-events.csv" AS row
+MERGE (year:Year {value: toInteger(row.year)})-[:CONTAINS]->
+      (month:Month {value: toInteger(row.month)})-[:CONTAINS]->
+      (day:Day {value: toInteger(row.day)})-[:CONTAINS]->
+      (hour:Hour {value: toInteger(row.hour)})-[:CONTAINS]->
+      (minute:Minute {value: toInteger(row.minute)})-[:CONTAINS]->
+      (second:Second {value: toInteger(row.second)})
+MERGE (l:Line {line: row.cod_linha})-[:HAS_VEHICLE]->
+      (v:Vehicle {vehicle:row.vehicle})-[:STOPPED_AT]->
+      (s:Stop {geometry : 'POINT(' + row.longitude +' '+ row.latitude +')', latitude:row.latitude, longitude:row.longitude,timestamp:row.stop_timestamp })
+with s,second
+CALL spatial.addNode('layer_curitiba_neighbourhoods',s) YIELD node
+MERGE (node)-[:HAPPENED_ON]-(second)
+RETURN node;
+
+
+LOAD CSV WITH HEADERS FROM "file:///tracking-attributes.csv" AS row
+MATCH (v:Vehicle {vehicle: row.vehicle})-[:STOPPED_AT]->(s0:Stop {timestamp:row.last_stop})
+MATCH (v1:Vehicle {vehicle: row.vehicle})-[:STOPPED_AT]->(s1:Stop {timestamp:row.current_stop})
+MERGE (s0)-[m:MOVED_TO {delta_time: row.delta_time, delta_distance: row.delta_distance,delta_velocity:row.delta_velocity}]->(s1)
+return s0,m,s1
+
+
+
+// cod_linha,veic,delta_time,delta_distance,delta_velocity,last_stop,current_stop
+// 001,BN997,0.67,0.03,3.06,2019-02-21 06:45:31,2019-02-21 06:46:11
+
+
+
+
 
 
 -----------------------------------------------------------------------

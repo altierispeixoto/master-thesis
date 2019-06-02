@@ -10,14 +10,16 @@ class Haversine:
 
     See: https://nathanrooy.github.io/posts/2016-09-07/haversine-with-python/
 
-    '''
-    def __init__(self,lon1,lat1,lon2,lat2):
-        lon1,lat1=lon1,lat1
-        lon2,lat2=lon2,lat2
+    ''
 
-        R=6371000                               # radius of Earth in meters
-        phi_1=math.radians(lat1)
-        phi_2=math.radians(lat2)
+    def __init__(self, lon1, lat1, lon2, lat2):
+
+        lon1, lat1 = lon1, lat1
+        lon2, lat2 = lon2, lat2
+
+        R = 6371000                               # radius of Earth in meters
+        phi_1 = math.radians(lat1)
+        phi_2 = math.radians(lat2)
 
         delta_phi=math.radians(lat2-lat1)
         delta_lambda=math.radians(lon2-lon1)
