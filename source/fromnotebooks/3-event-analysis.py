@@ -3,6 +3,7 @@
 # %%
 import findspark
 findspark.init('/usr/local/spark')
+
 from pyspark.sql.types import DoubleType, StringType
 from pyspark.conf import SparkConf
 from pyspark.context import SparkContext
@@ -52,11 +53,11 @@ def executeQuery(table_name):
 # %% markdown
 # Todas as linhas da Rede Integrada do Transporte Coletivo de Curitiba.
 # %%
-executeQuery('veiculos').toPandas().head(2)
+#executeQuery('veiculos').toPandas().head(2)
 
 
-tabelaVeiculo.select(['cod_ponto', 'horario']).filter(
-    "cod_linha == 507").show()
+# tabelaVeiculo.select(['cod_ponto', 'horario']).filter(
+#     "cod_linha == 507 ").show()
 
  #and hour in (6,7)
  #.filter("cod_linha == 507 ")  \
@@ -68,7 +69,23 @@ events_507 = position_events.select('cod_linha', 'veic', 'lat', 'lon', functions
             .withColumn("hour",  functions.hour(functions.col('event_timestamp')))  \
             .withColumn("minute",  functions.minute(functions.col('event_timestamp')))  \
             .withColumn("second",  functions.second(functions.col('event_timestamp')))  \
-            .sort(functions.asc("event_timestamp"))
+            .filter("cod_linha == 507 and veic == 'EL309' and hour in (7,8) and minute == 49")  \
+            .sort(functions.asc("event_timestamp")).show()
+
+
++---------+-----+----------+----------+-------------------+----+-----+---+----+------+------+
+|cod_linha| veic|       lat|       lon|    event_timestamp|year|month|day|hour|minute|second|
++---------+-----+----------+----------+-------------------+----+-----+---+----+------+------+
+|      507|EL309|-25.521983|-49.295435|2019-02-21 07:49:02|2019|    2| 21|   7|    49|     2|
+|      507|EL309|-25.521603|-49.295551|2019-02-21 07:49:05|2019|    2| 21|   7|    49|     5|
+|      507|EL309| -25.52122|-49.295546|2019-02-21 07:49:08|2019|    2| 21|   7|    49|     8|
+|      507|EL309|-25.520638|-49.295531|2019-02-21 07:49:14|2019|    2| 21|   7|    49|    14|
+|      507|EL309|-25.520435| -49.29553|2019-02-21 07:49:18|2019|    2| 21|   7|    49|    18|
+|      507|EL309| -25.52011| -49.29553|2019-02-21 07:49:26|2019|    2| 21|   7|    49|    26|
+|      507|EL309|-25.519546|-49.295541|2019-02-21 07:49:32|2019|    2| 21|   7|    49|    32|
+|      507|EL309| -25.52003|-49.235255|2019-02-21 08:49:56|2019|    2| 21|   8|    49|    56|
++---------+-----+----------+----------+-------------------+----+-----+---+----+------+------+
+
 
 
 windowSpec = Window.partitionBy('cod_linha', 'veic').orderBy('event_timestamp')
