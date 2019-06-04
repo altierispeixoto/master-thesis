@@ -97,8 +97,22 @@ WITH collect(t) as terminalStations
 match (ts:TerminalStation)-[:IS_IN_SECTION]->(s:Section) set ts.section_name = s.section_name
 
 
+
+
+
+-- LOAD BUS LINES
+LOAD CSV WITH HEADERS FROM "file:///line.csv" AS row
+CREATE (l:Line)
+    set   l.line_code  = row.cod
+         ,l.category   = row.categoria
+         ,l.name       = row.nome
+         ,l.color      = row.color
+         ,l.card_only  = row.somente_cartao
+RETURN l;
+
+
 -- LOAD BUS STOPS
-USING PERIODIC COMMIT 1000
+USING PERIODIC COMMIT 10000
 LOAD CSV WITH HEADERS FROM "file:///bus-stop.csv" AS row
 create (bs:BusStop)
 set bs.name       = row.nome
@@ -124,6 +138,27 @@ CREATE(bss) - [: NEXT_STOP {
    ,color_name: row.nome_cor
    ,card_only: row.somente_cartao
    }]->(bse)
+
+
+USING PERIODIC COMMIT 10000
+LOAD CSV WITH HEADERS FROM "file:///trip-endpoints.csv" AS row
+MATCH(l:Line {line_code:row.line_code}),(bs0:BusStop {number:row.origin}),(bs1:BusStop {number:row.destination})
+MERGE(l)-[:HAS_TRIP]->(t:Trip {line_way:row.sentido})
+MERGE(t)-[:STARTS_AT]->(bs0)
+MERGE(t)-[:ENDS_AT]->(bs1)
+
+
+create (bs:BusStop)
+set bs.name       = row.nome
+    ,bs.number    = row.num
+    ,bs.type      = row.tipo
+    ,bs.geometry  = 'POINT(' + row.lon +' '+ row.lat +')'
+    ,bs.latitude  = row.lat
+    ,bs.longitude = row.lon
+
+
+line_code,sentido,origin,destination
+507,Terminal Sitio Cercado,109102,109106
 
 
 MATCH (p1:BusStop)-[r:NEXT_STOP]->(p2:BusStop)
@@ -287,7 +322,7 @@ with bs, node as n where 'Section' IN LABELS(n)  merge (bs)-[r:IS_IN_SECTION]->(
 match (bs:BusStop)-[:IS_IN_SECTION]->(s:Section) set bs.section_name = s.section_name
 
 
-USING PERIODIC COMMIT 1000
+USING PERIODIC COMMIT 10000
 LOAD CSV WITH HEADERS FROM "file:///stop-events.csv" AS row
 MERGE (year:Year {value: toInteger(row.year)})-[:CONTAINS]->
       (month:Month {value: toInteger(row.month)})-[:CONTAINS]->
@@ -299,14 +334,12 @@ MERGE (l:Line {line: row.cod_linha})-[:HAS_VEHICLE]->
       (v:Vehicle {vehicle:row.vehicle})-[:STOPPED_AT]->
       (s:Stop {geometry : 'POINT(' + row.longitude +' '+ row.latitude +')', latitude:row.latitude, longitude:row.longitude,timestamp:row.stop_timestamp })
 with s,second
-CALL spatial.addNode('layer_curitiba_neighbourhoods',s) YIELD node
-MERGE (node)-[:HAPPENED_ON]-(second)
-RETURN node;
+MERGE (s)-[:HAPPENED_ON]-(second);
+
 
 
 LOAD CSV WITH HEADERS FROM "file:///tracking-attributes.csv" AS row
-MATCH (v:Vehicle {vehicle: row.vehicle})-[:STOPPED_AT]->(s0:Stop {timestamp:row.last_stop})
-MATCH (v1:Vehicle {vehicle: row.vehicle})-[:STOPPED_AT]->(s1:Stop {timestamp:row.current_stop})
+MATCH (v:Vehicle {vehicle: row.vehicle})-[:STOPPED_AT]->(s0:Stop {timestamp:row.last_stop}),(v1:Vehicle {vehicle: row.vehicle})-[:STOPPED_AT]->(s1:Stop {timestamp:row.current_stop})
 MERGE (s0)-[m:MOVED_TO {delta_time: row.delta_time, delta_distance: row.delta_distance,delta_velocity:row.delta_velocity}]->(s1)
 return s0,m,s1
 

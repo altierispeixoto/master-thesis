@@ -93,25 +93,68 @@ def executeQuery(table_name):
 # %% markdown
 # Todas as linhas da Rede Integrada do Transporte Coletivo de Curitiba.
 # %%
-executeQuery('linhas').toPandas().head(10)
+sqlContext.sql("select cod,categoria_servico,nome,nome_cor,somente_cartao from linhas limit 10").show()
+
+
 # %% markdown
 # #### **Pontos de ônibus**
 # %% markdown
 # Todos os pontos da linha.
 # %%
-executeQuery('pontos_linha').toPandas().head(10)
+sqlContext.sql("select cod,lat,lon,nome,num,sentido,seq,tipo  from pontos_linha limit 10").show()
 # %% markdown
 # #### **Tabela de horários de cada ônibus**
 # %% markdown
 # O número da tabela horária que o veículo executou.
 # %%
-executeQuery('tabela_veiculo').toPandas().head(10)
+
+query = """
+select cod_linha
+      ,cod_ponto
+      ,horario
+      ,nome_linha
+      ,tabela
+      ,veiculo
+      from tabela_veiculo
+      where cod_linha = '507' and veiculo ='EL309'
+      order by cod_linha,horario
+"""
+sqlContext.sql(query).show(100)
+
+query = """
+select cod_linha
+      ,cod_ponto
+      ,horario
+      ,nome_linha
+      ,tabela
+      ,veiculo
+      from tabela_veiculo
+      where cod_linha = '507' and veiculo='EL304'
+      order by cod_linha,horario
+"""
+sqlContext.sql(query).show(100)
+
+
 # %% markdown
 # #### **Tabela horária de cada linha**
 # %% markdown
 # Tabela horária de cada linha.
 # %%
-executeQuery('tabela_linha').toPandas().head()
+query = """
+ select adapt
+        ,cod
+        ,dia
+        ,hora
+        ,num
+        ,ponto
+        ,tabela
+         from tabela_linha
+        where cod = '507' and tabela='5'
+
+"""
+
+sqlContext.sql(query).show(100)
+
 # %% markdown
 # #### **Tabela de trechos dos itinerários de cada linha**
 # %% markdown

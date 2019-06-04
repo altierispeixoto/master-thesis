@@ -19,7 +19,7 @@ def insert_events(row):
 
     conn.create_position(row[0], row[1], row[2], row[3], row[4],row[5])
     conn.close()
-        
+
 class DataLoader:
 
     def __init__(self):
@@ -95,7 +95,7 @@ class DataLoader:
         [conn.create_bus_lines(row['ponto_inicio'], row['ponto_final'], row['cod_linha'], row['sentido_linha'],
                                row['categoria_servico'], row['nome_linha'], row['nome_cor'],
                                row['somente_cartao']) for index, row in rota_sequenciada_df.iterrows()]
-        
+
         del rota_sequenciada
         del rota_sequenciada_df
         gc.collect()
@@ -109,21 +109,21 @@ class DataLoader:
 
 #         [conn.create_bus(row['veic']) for index, row in vehicles_df.iterrows()]
 
-        
+
 
     def create_positions(self, vehicles,vehicle,line_code,date):
 
         f = "veic = '{}' and cod_linha = '{}' and date='{}'".format(vehicle, line_code,date)
-        
+
         vehicles.select('veic', 'lat', 'lon','cod_linha', 'event_timestamp','date').filter(f).foreach(insert_events)
-        
-       
-        
+
+
+
         print('Vehicle: {} - Line Code: {}'.format(vehicle,line_code))
-        
-      
+
+
     def connect_events(self,vehicle,line_code,date):
-        
+
         NEO4J_URI = 'bolt://172.16.1.118:7687'
         NEO4J_USER = 'neo4j'
         NEO4J_PASSWORD = 'neo4j2018'
@@ -131,9 +131,9 @@ class DataLoader:
         conn = UrbsNeo4JDatabase(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
         conn.connect_events(vehicle,line_code,date)
         conn.close()
-        
+
     def create_edge_properties(self,vehicle,line_code,date):
-        
+
         NEO4J_URI = 'bolt://172.16.1.118:7687'
         NEO4J_USER = 'neo4j'
         NEO4J_PASSWORD = 'neo4j2018'
@@ -141,13 +141,8 @@ class DataLoader:
         conn = UrbsNeo4JDatabase(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
         conn.create_edge_properties(vehicle,line_code,date)
         conn.close()
-        
-        
+
+
 #         del vehicles
 #         del vehicles_df
 #         gc.collect()
-        
-     
-
-
-
