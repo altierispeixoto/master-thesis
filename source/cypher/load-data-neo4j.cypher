@@ -148,17 +148,11 @@ MERGE(t)-[:STARTS_AT]->(bs0)
 MERGE(t)-[:ENDS_AT]->(bs1)
 
 
-create (bs:BusStop)
-set bs.name       = row.nome
-    ,bs.number    = row.num
-    ,bs.type      = row.tipo
-    ,bs.geometry  = 'POINT(' + row.lon +' '+ row.lat +')'
-    ,bs.latitude  = row.lat
-    ,bs.longitude = row.lon
+USING PERIODIC COMMIT 10000
+LOAD CSV WITH HEADERS FROM "file:///schedules.csv" AS row
+MATCH(bs:BusStop {number:row.cod_ponto})
+MERGE (bs)-[:HAS_SCHEDULE_AT]-(s:Schedule {line_code:row.cod_linha,time:row.horario,line_name:row.nome_linha,time_table:row.tabela,vehicle:row.veiculo})
 
-
-line_code,sentido,origin,destination
-507,Terminal Sitio Cercado,109102,109106
 
 
 MATCH (p1:BusStop)-[r:NEXT_STOP]->(p2:BusStop)
@@ -334,12 +328,14 @@ MERGE (l:Line {line: row.cod_linha})-[:HAS_VEHICLE]->
       (v:Vehicle {vehicle:row.vehicle})-[:STOPPED_AT]->
       (s:Stop {geometry : 'POINT(' + row.longitude +' '+ row.latitude +')', latitude:row.latitude, longitude:row.longitude,timestamp:row.stop_timestamp })
 with s,second
-MERGE (s)-[:HAPPENED_ON]-(second);
+CALL spatial.addNode('layer_curitiba',s) YIELD node
+MERGE (node)-[:HAPPENED_ON]-(second)
 
 
 
-LOAD CSV WITH HEADERS FROM "file:///tracking-attributes.csv" AS row
-MATCH (v:Vehicle {vehicle: row.vehicle})-[:STOPPED_AT]->(s0:Stop {timestamp:row.last_stop}),(v1:Vehicle {vehicle: row.vehicle})-[:STOPPED_AT]->(s1:Stop {timestamp:row.current_stop})
+LOAD CSV WITH HEADERS FROM "file:///tracking.csv" AS row
+MATCH (v:Vehicle {vehicle: row.veic})-[:STOPPED_AT]->(s0:Stop {timestamp:row.last_stop})
+MATCH (v1:Vehicle {vehicle: row.veic})-[:STOPPED_AT]->(s1:Stop {timestamp:row.current_stop})
 MERGE (s0)-[m:MOVED_TO {delta_time: row.delta_time, delta_distance: row.delta_distance,delta_velocity:row.delta_velocity}]->(s1)
 return s0,m,s1
 
@@ -349,7 +345,9 @@ return s0,m,s1
 // 001,BN997,0.67,0.03,3.06,2019-02-21 06:45:31,2019-02-21 06:46:11
 
 
-
+MATCH (s:Stop )
+call spatial.withinDistance('layer_curitiba',{lon:toFloat(s.longitude),lat:toFloat(s.latitude)},0.01) yield node,distance
+with s, node as n where 'BusStop' IN LABELS(n)  MERGE(s)-[:STOPS_AT]-(n)
 
 
 

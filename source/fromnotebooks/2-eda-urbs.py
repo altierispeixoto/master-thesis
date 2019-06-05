@@ -129,7 +129,7 @@ select cod_linha
       ,tabela
       ,veiculo
       from tabela_veiculo
-      where cod_linha = '507' and veiculo='EL304'
+      where cod_linha = '507' and veiculo ='EL309'
       order by cod_linha,horario
 """
 sqlContext.sql(query).show(100)
