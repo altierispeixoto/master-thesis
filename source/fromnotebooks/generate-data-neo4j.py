@@ -1,8 +1,10 @@
+import findspark
+findspark.init('/usr/local/spark')
+
 from pyspark.sql import SQLContext
 from pyspark.context import SparkContext
 from pyspark.conf import SparkConf
-import findspark
-findspark.init('/usr/local/spark')
+
 # %%
 
 conf = SparkConf().setAppName("App")
@@ -135,8 +137,7 @@ sqlContext.sql(query_rota_sequenciada).coalesce(1) \
     .format("csv")                \
     .save(target_path)
 
-
-
+-------------------------------------------------------------------------------
 query = """
 with start_end as (
     select cod,sentido,min(int(seq)) as start_trip, max(int(seq)) as end_trip
@@ -156,8 +157,31 @@ with start_end as (
 
 """
 
-
 target_path = '/home/altieris/datascience/data/urbs/processed/trip-endpoints-neo4j/'
+
+sqlContext.sql(query).coalesce(1) \
+    .write.mode('overwrite')      \
+    .option("header", "true")     \
+    .format("csv")                \
+    .save(target_path)
+
+
+-------------------------------------------------------------------------------
+
+tabelaLinha = sqlContext.read.parquet(processed_path+'tabelaveiculo/')
+tabelaLinha.registerTempTable("tabela_veiculo")
+query = """
+select cod_linha
+      ,cod_ponto
+      ,horario
+      ,nome_linha
+      ,tabela
+      ,veiculo
+      from tabela_veiculo
+      where cod_linha = '507' and veiculo ='EL309'
+      order by cod_linha,horario
+"""
+target_path = '/home/altieris/datascience/data/urbs/processed/schedules-neo4j/'
 
 sqlContext.sql(query).coalesce(1) \
     .write.mode('overwrite')      \

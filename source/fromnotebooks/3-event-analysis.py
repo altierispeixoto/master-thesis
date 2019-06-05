@@ -4,15 +4,15 @@
 import findspark
 findspark.init('/usr/local/spark')
 
-from pyspark.sql.types import DoubleType, StringType
-from pyspark.conf import SparkConf
-from pyspark.context import SparkContext
-from pyspark.sql import SQLContext
-from pyspark.sql import functions
-from pyspark.sql.window import Window
-import os
-import sys
 
+import sys
+import os
+from pyspark.sql.window import Window
+from pyspark.sql import functions
+from pyspark.sql import SQLContext
+from pyspark.context import SparkContext
+from pyspark.conf import SparkConf
+from pyspark.sql.types import DoubleType, StringType
 
 
 # %%
@@ -62,30 +62,15 @@ def executeQuery(table_name):
  #and hour in (6,7)
  #.filter("cod_linha == 507 ")  \
 events_507 = position_events.select('cod_linha', 'veic', 'lat', 'lon', functions.date_format(functions.unix_timestamp('dthr', 'dd/MM/yyyy HH:mm:ss')
-                                                                                .cast('timestamp'), "yyyy-MM-dd HH:mm:ss").alias('event_timestamp')) \
+                                                                                             .cast('timestamp'), "yyyy-MM-dd HH:mm:ss").alias('event_timestamp')) \
             .withColumn("year",  functions.year(functions.col('event_timestamp')))  \
             .withColumn("month",  functions.month(functions.col('event_timestamp')))  \
             .withColumn("day",  functions.dayofmonth(functions.col('event_timestamp')))  \
             .withColumn("hour",  functions.hour(functions.col('event_timestamp')))  \
             .withColumn("minute",  functions.minute(functions.col('event_timestamp')))  \
             .withColumn("second",  functions.second(functions.col('event_timestamp')))  \
-            .filter("cod_linha == 507 and veic == 'EL309' and hour in (7,8) and minute == 49")  \
-            .sort(functions.asc("event_timestamp")).show()
-
-
-+---------+-----+----------+----------+-------------------+----+-----+---+----+------+------+
-|cod_linha| veic|       lat|       lon|    event_timestamp|year|month|day|hour|minute|second|
-+---------+-----+----------+----------+-------------------+----+-----+---+----+------+------+
-|      507|EL309|-25.521983|-49.295435|2019-02-21 07:49:02|2019|    2| 21|   7|    49|     2|
-|      507|EL309|-25.521603|-49.295551|2019-02-21 07:49:05|2019|    2| 21|   7|    49|     5|
-|      507|EL309| -25.52122|-49.295546|2019-02-21 07:49:08|2019|    2| 21|   7|    49|     8|
-|      507|EL309|-25.520638|-49.295531|2019-02-21 07:49:14|2019|    2| 21|   7|    49|    14|
-|      507|EL309|-25.520435| -49.29553|2019-02-21 07:49:18|2019|    2| 21|   7|    49|    18|
-|      507|EL309| -25.52011| -49.29553|2019-02-21 07:49:26|2019|    2| 21|   7|    49|    26|
-|      507|EL309|-25.519546|-49.295541|2019-02-21 07:49:32|2019|    2| 21|   7|    49|    32|
-|      507|EL309| -25.52003|-49.235255|2019-02-21 08:49:56|2019|    2| 21|   8|    49|    56|
-+---------+-----+----------+----------+-------------------+----+-----+---+----+------+------+
-
+            .filter("cod_linha == 507 and veic == 'EL309' and hour in (7,8)")  \
+            .sort(functions.asc("event_timestamp"))
 
 
 windowSpec = Window.partitionBy('cod_linha', 'veic').orderBy('event_timestamp')
@@ -98,8 +83,8 @@ sys.path.append(os.path.abspath(scriptpath))
 
 
 events = events_507.withColumn("last_timestamp", functions.lag("event_timestamp", 1, 0).over(windowSpec))\
-.withColumn("last_latitude", functions.lag("lat", 1, 0).over(windowSpec))\
-.withColumn("last_longitude", functions.lag("lon", 1, 0).over(windowSpec))
+    .withColumn("last_latitude", functions.lag("lat", 1, 0).over(windowSpec))\
+    .withColumn("last_longitude", functions.lag("lon", 1, 0).over(windowSpec))
 
 
 def haversine(lon1, lat1, lon2, lat2):
@@ -133,19 +118,19 @@ def create_flag_status(delta_velocity):
 apply_haversine = functions.udf(lambda lon0, lat0, lon1, lat1, : haversine(
     lon0, lat0, lon1, lat1), DoubleType())
 
-apply_moving = functions.udf(lambda velocity, : create_flag_status(velocity), StringType())
+apply_moving = functions.udf(
+    lambda velocity, : create_flag_status(velocity), StringType())
 
 events_processed = events.withColumn("delta_time", functions.unix_timestamp('event_timestamp') - functions.unix_timestamp('last_timestamp')) \
     .withColumn("delta_distance",
                 apply_haversine(functions.col('lon').cast('double'), functions.col('lat').cast('double'), functions.col('last_longitude').cast('double'), functions.col('last_latitude').cast('double')))\
     .withColumn("delta_velocity", (functions.col('delta_distance').cast('double') / functions.col('delta_time').cast('double'))*3.6) \
-    .withColumn("moving_status", apply_moving(functions.col('delta_velocity').cast('double') ) ) \
+    .withColumn("moving_status", apply_moving(functions.col('delta_velocity').cast('double'))) \
     .orderBy('event_timestamp')
 
 
 events_processed.registerTempTable("events_processed")
 
-events_processed.show(10)
 
 query = """
     select evt.cod_linha
@@ -160,7 +145,7 @@ query = """
           ,evt.lat as latitude
           ,evt.lon as longitude
      from events_processed evt
-     where evt.moving_status = 'STOPPED'
+     where evt.moving_status = 'STOPPED' and cod_linha='507' and evt.veic ='EL309'
      order by cod_linha
 """
 
@@ -168,7 +153,8 @@ target_path = '/home/altieris/datascience/data/urbs/processed/stopevents/'
 
 #sqlContext.sql(query).show(10)
 
-sqlContext.sql(query).coalesce(1).write.mode('overwrite').option("header", "true").format("csv").save(target_path)
+sqlContext.sql(query).coalesce(1).write.mode('overwrite').option(
+    "header", "true").format("csv").save(target_path)
 
 
 query = """
@@ -179,7 +165,7 @@ with stops as (
           ,event_timestamp as last_stop
           ,lead(event_timestamp) over (partition by veic,moving_status order by event_timestamp asc )  as current_stop
      from events_processed
-     where moving_status = 'STOPPED'
+     where moving_status = 'STOPPED' and cod_linha='507' and  veic ='EL309'
 ),
 trips as (
     select round(sum( evp.delta_time )/60,2)     as delta_time
@@ -205,8 +191,8 @@ select cod_linha
       ,last_stop
       ,current_stop
 from trips
-
 """
 # where delta_time <= 10
 target_path = '/home/altieris/datascience/data/urbs/processed/trackingdata/'
-sqlContext.sql(query).coalesce(1).write.mode('overwrite').option("header", "true").format("csv").save(target_path)
+sqlContext.sql(query).coalesce(1).write.mode('overwrite').option(
+    "header", "true").format("csv").save(target_path)
