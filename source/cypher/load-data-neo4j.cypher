@@ -144,15 +144,31 @@ USING PERIODIC COMMIT 10000
 LOAD CSV WITH HEADERS FROM "file:///trip-endpoints.csv" AS row
 MATCH(l:Line {line_code:row.line_code}),(bs0:BusStop {number:row.origin}),(bs1:BusStop {number:row.destination})
 MERGE(l)-[:HAS_TRIP]->(t:Trip {line_way:row.sentido})
-MERGE(t)-[:STARTS_AT]->(bs0)
-MERGE(t)-[:ENDS_AT]->(bs1)
+MERGE(t)-[:STARTS_ON_POINT]->(bs0)
+MERGE(t)-[:ENDS_ON_POINT]->(bs1)
+
+
+// USING PERIODIC COMMIT 10000
+// LOAD CSV WITH HEADERS FROM "file:///schedules.csv" AS row
+// MATCH(bs:BusStop {number:row.cod_ponto})
+// MERGE (bs)-[:HAS_SCHEDULE_AT]-(s:Schedule {line_code:row.cod_linha,time:row.horario,line_name:row.nome_linha,time_table:row.tabela,vehicle:row.veiculo})
 
 
 USING PERIODIC COMMIT 10000
-LOAD CSV WITH HEADERS FROM "file:///schedules.csv" AS row
-MATCH(bs:BusStop {number:row.cod_ponto})
-MERGE (bs)-[:HAS_SCHEDULE_AT]-(s:Schedule {line_code:row.cod_linha,time:row.horario,line_name:row.nome_linha,time_table:row.tabela,vehicle:row.veiculo})
+LOAD CSV WITH HEADERS FROM "file:///trips.csv" AS row
+MATCH (l:Line {line_code:row.line_code})-[:HAS_TRIP]->(t:Trip)-[:STARTS_ON_POINT]->(bss:BusStop {number:row.start_point}),(t)-[:ENDS_ON_POINT]->(bse:BusStop {number:row.end_point})
+MERGE(t)-[:HAS_SCHEDULE_AT]->(s:Schedule {start_time:row.start_time,end_time:row.end_time,time_table:row.time_table,vehicle:row.vehicle})
 
+
+
+-- returns the full trip
+// MATCH p = (l:Line)-[:HAS_TRIP]->(t:Trip {line_way: 'Novo Mundo'})-[:STARTS_ON_POINT]->
+//           (bss:BusStop)-[:NEXT_STOP* {line_code:l.line_code}]->(bse:BusStop)<-[:ENDS_ON_POINT]-(t)
+// return p
+
+//
+// line_code,start_point,start_time,time_table,vehicle,end_time,end_point
+// 666,150651,06:00,1,GN606,06:35,102001
 
 
 MATCH (p1:BusStop)-[r:NEXT_STOP]->(p2:BusStop)
@@ -316,6 +332,7 @@ with bs, node as n where 'Section' IN LABELS(n)  merge (bs)-[r:IS_IN_SECTION]->(
 match (bs:BusStop)-[:IS_IN_SECTION]->(s:Section) set bs.section_name = s.section_name
 
 
+
 USING PERIODIC COMMIT 10000
 LOAD CSV WITH HEADERS FROM "file:///stop-events.csv" AS row
 MERGE (year:Year {value: toInteger(row.year)})-[:CONTAINS]->
@@ -324,31 +341,63 @@ MERGE (year:Year {value: toInteger(row.year)})-[:CONTAINS]->
       (hour:Hour {value: toInteger(row.hour)})-[:CONTAINS]->
       (minute:Minute {value: toInteger(row.minute)})-[:CONTAINS]->
       (second:Second {value: toInteger(row.second)})
+
 MERGE (l:Line {line: row.cod_linha})-[:HAS_VEHICLE]->
       (v:Vehicle {vehicle:row.vehicle})-[:STOPPED_AT]->
-      (s:Stop {geometry : 'POINT(' + row.longitude +' '+ row.latitude +')', latitude:row.latitude, longitude:row.longitude,timestamp:row.stop_timestamp })
+      (s:Stop {geometry : 'POINT(' + row.longitude +' '+ row.latitude +')', latitude:row.latitude, longitude:row.longitude,event_timestamp:row.stop_timestamp, event_time:row.event_time  })
 with s,second
 CALL spatial.addNode('layer_curitiba',s) YIELD node
-MERGE (node)-[:HAPPENED_ON]-(second)
+MERGE (node)-[:HAPPENED_AT]-(second)
 
 
 
 LOAD CSV WITH HEADERS FROM "file:///tracking.csv" AS row
-MATCH (v:Vehicle {vehicle: row.veic})-[:STOPPED_AT]->(s0:Stop {timestamp:row.last_stop})
-MATCH (v1:Vehicle {vehicle: row.veic})-[:STOPPED_AT]->(s1:Stop {timestamp:row.current_stop})
+MATCH (v:Vehicle {vehicle: row.veic})-[:STOPPED_AT]->(s0:Stop {event_timestamp:row.last_stop})
+MATCH (v1:Vehicle {vehicle: row.veic})-[:STOPPED_AT]->(s1:Stop {event_timestamp:row.current_stop})
 MERGE (s0)-[m:MOVED_TO {delta_time: row.delta_time, delta_distance: row.delta_distance,delta_velocity:row.delta_velocity}]->(s1)
 return s0,m,s1
+
+
+LOAD CSV WITH HEADERS FROM "file:///stop-events.csv" AS row
+MATCH (l:Line {line_code:row.cod_linha})-[:HAS_TRIP]->
+      (t:Trip)-[:HAS_SCHEDULE_AT]->(s:Schedule {vehicle:row.vehicle})
+where time(row.event_time) >= time(s.start_time) - duration({  minutes: 5 }) and time(row.event_time) <= time(s.end_time) + duration({  minutes: 5 })
+MATCH (st:Stop {latitude:row.latitude, longitude:row.longitude, event_time:row.event_time})
+with st,t, row
+call spatial.withinDistance('layer_curitiba',{lon:toFloat(st.longitude),lat:toFloat(st.latitude)},0.007) yield node
+with row,st,t, node where (node)-[:NEXT_STOP {line_way:t.line_way}]->()
+MERGE (v:Vehicle {vehicle:row.vehicle})-[:STOPPED_AT]->(st)-[:EVENT_STOP {line_way:t.line_way}]->(n)
+
+// MATCH p = (l:Line)-[:HAS_TRIP]->(t:Trip {line_way: 'Novo Mundo'})-[:STARTS_ON_POINT]->
+//           (bss:BusStop)-[:NEXT_STOP* {line_code:l.line_code}]->(bse:BusStop)<-[:ENDS_ON_POINT]-(t)
+// return p
+
+
 
 
 
 // cod_linha,veic,delta_time,delta_distance,delta_velocity,last_stop,current_stop
 // 001,BN997,0.67,0.03,3.06,2019-02-21 06:45:31,2019-02-21 06:46:11
 
+// MATCH (s:Stop )
+// call spatial.withinDistance('layer_curitiba',{lon:toFloat(s.longitude),lat:toFloat(s.latitude)},0.007) yield node
+// match(node)-[:NEXT_STOP {line_code:'666'}]->() return node
+
+
+
+MATCH(l:Line {line_code:'666'})-[:HAS_TRIP]->(t:Trip)-[:HAS_SCHEDULE_AT]->(s:Schedule {vehicle:'GN606'})
+where '07:05' >= s.start_time and '07:05' <= s.end_time
+
+
+call spatial.withinDistance('layer_curitiba',{lon:toFloat(s.longitude),lat:toFloat(s.latitude)},0.01) yield node,distance
+with s, node as n where 'BusStop' IN LABELS(n)  MERGE(s)-[:STOPS_AT]-(n)
+return s,t
+
+
 
 MATCH (s:Stop )
 call spatial.withinDistance('layer_curitiba',{lon:toFloat(s.longitude),lat:toFloat(s.latitude)},0.01) yield node,distance
 with s, node as n where 'BusStop' IN LABELS(n)  MERGE(s)-[:STOPS_AT]-(n)
-
 
 
 -----------------------------------------------------------------------

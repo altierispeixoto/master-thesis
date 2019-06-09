@@ -16,30 +16,48 @@ conf = (conf.setMaster('local[*]')
 sc = SparkContext.getOrCreate(conf=conf)
 sqlContext = SQLContext(sc)
 
-processed_path = '/home/altieris/datascience/data/urbs/processed/'
 
--------------------------------------------------------------------------------
-linhas = sqlContext.read.parquet(processed_path+'linhas/')
-linhas.registerTempTable("linhas")
+# -------------------------------------------------------------------------------
 
-target_path = '/home/altieris/datascience/data/urbs/processed/lines-neo4j/'
+
+def load():
+    processed_path = '/home/altieris/datascience/data/urbs/processed/'
+
+    sqlContext.read.parquet(processed_path+'linhas/').registerTempTable("linhas")
+    sqlContext.read.parquet(processed_path+'pontoslinha/').registerTempTable("pontos_linha")
+
+    sqlContext.read.parquet(processed_path+'tabelaveiculo/').registerTempTable("tabela_veiculo")
+
+load()
+
+def save(query, target_path):
+    sqlContext.sql(query).coalesce(1) \
+        .write.mode('overwrite')      \
+        .option("header", "true")     \
+        .format("csv")                \
+        .save(target_path)
+
+
+def show(query, n=10):
+    sqlContext.sql(query).show(n)
+
+
+def run(query):
+    sqlContext.sql(query)
+
 
 query = """
-select cod,categoria_servico,nome,nome_cor,somente_cartao from linhas
+select cod
+      ,categoria_servico
+      ,nome
+      ,nome_cor
+      ,somente_cartao
+    from linhas
 """
+#show(query)
+save(query, target_path='/home/altieris/datascience/data/urbs/processed/lines-neo4j/')
 
-sqlContext.sql(query).coalesce(1) \
-    .write.mode('overwrite')      \
-    .option("header", "true")     \
-    .format("csv")                \
-    .save(target_path)
-
-
--------------------------------------------------------------------------------
-
-pontosLinha = sqlContext.read.parquet(processed_path+'pontoslinha/')
-pontosLinha.registerTempTable("pontos_linha")
-
+# -------------------------------------------------------------------------------
 
 query = """
 select distinct
@@ -51,16 +69,9 @@ select distinct
       from pontos_linha
 """
 
-target_path = '/home/altieris/datascience/data/urbs/processed/busstops-neo4j/'
+save(query, target_path='/home/altieris/datascience/data/urbs/processed/busstops-neo4j/')
 
-sqlContext.sql(query).coalesce(1) \
-    .write.mode('overwrite')      \
-    .option("header", "true")     \
-    .format("csv")                \
-    .save(target_path)
-
-
--------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 query_view_rota_sequenciada = """
 CREATE OR REPLACE TEMPORARY VIEW rota_sequenciada AS
@@ -111,9 +122,8 @@ CREATE OR REPLACE TEMPORARY VIEW rota_sequenciada AS
                                       ,pseq.seq_fim
 """
 
-sqlContext.sql(query_view_rota_sequenciada)
+run(query_view_rota_sequenciada)
 
-# where year ='2019' and month='03' and day='14'
 query_rota_sequenciada = """
     select cod_linha
           ,sentido_linha
@@ -126,50 +136,36 @@ query_rota_sequenciada = """
           ,nome_cor
           ,somente_cartao
          from rota_sequenciada
-         where cod_linha = '507'
 """
 
-target_path = '/home/altieris/datascience/data/urbs/processed/routes-neo4j/'
+save(query_rota_sequenciada, target_path='/home/altieris/datascience/data/urbs/processed/routes-neo4j/')
 
-sqlContext.sql(query_rota_sequenciada).coalesce(1) \
-    .write.mode('overwrite')      \
-    .option("header", "true")     \
-    .format("csv")                \
-    .save(target_path)
-
--------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 query = """
 with start_end as (
-    select cod,sentido,min(int(seq)) as start_trip, max(int(seq)) as end_trip
+    select  cod
+           ,sentido
+           ,min(int(seq)) as start_trip
+           ,max(int(seq)) as end_trip
          from pontos_linha
-         where COD = '507' -- and sentido = 'Horario'
     group by cod,sentido
 )
- select ps.cod as line_code
+ select ps.cod     as line_code
        ,ps.sentido
-       ,ps.num as origin
-       ,ps.nome as ponto_origem
-       ,pe.num as destination
-       ,pe.nome as ponto_destino
+       ,ps.num     as origin
+       ,ps.nome    as ponto_origem
+       ,pe.num     as destination
+       ,pe.nome    as ponto_destino
   from start_end  ss
      inner join pontos_linha ps on (ps.cod = ss.cod  and ps.sentido = ss.sentido and ps.seq = ss.start_trip)
      inner join pontos_linha pe on (pe.cod = ss.cod  and pe.sentido = ss.sentido and pe.seq = ss.end_trip)
 
 """
 
-target_path = '/home/altieris/datascience/data/urbs/processed/trip-endpoints-neo4j/'
+save(query, target_path='/home/altieris/datascience/data/urbs/processed/trip-endpoints-neo4j/')
 
-sqlContext.sql(query).coalesce(1) \
-    .write.mode('overwrite')      \
-    .option("header", "true")     \
-    .format("csv")                \
-    .save(target_path)
+# -------------------------------------------------------------------------------
 
-
--------------------------------------------------------------------------------
-
-tabelaLinha = sqlContext.read.parquet(processed_path+'tabelaveiculo/')
-tabelaLinha.registerTempTable("tabela_veiculo")
 query = """
 select cod_linha
       ,cod_ponto
@@ -178,13 +174,25 @@ select cod_linha
       ,tabela
       ,veiculo
       from tabela_veiculo
-      where cod_linha = '507' and veiculo ='EL309'
       order by cod_linha,horario
 """
-target_path = '/home/altieris/datascience/data/urbs/processed/schedules-neo4j/'
+save(query, target_path='/home/altieris/datascience/data/urbs/processed/schedules-neo4j/')
 
-sqlContext.sql(query).coalesce(1) \
-    .write.mode('overwrite')      \
-    .option("header", "true")     \
-    .format("csv")                \
-    .save(target_path)
+# --------------------------------------------------------------------------
+
+query = """
+with query_1 as (
+select cod_linha     as line_code
+      ,cod_ponto     as start_point
+      ,horario       as start_time
+      ,tabela        as time_table
+      ,veiculo       as vehicle
+      ,lead(horario) over(partition by cod_linha,tabela,veiculo order by cod_linha, horario)   as end_time
+      ,lead(cod_ponto) over(partition by cod_linha,tabela,veiculo order by cod_linha, horario) as end_point
+      from tabela_veiculo
+      order by cod_linha,horario
+)
+select * from query_1
+"""
+
+save(query, target_path='/home/altieris/datascience/data/urbs/processed/trips/')
