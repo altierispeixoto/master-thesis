@@ -1,6 +1,3 @@
-# %% markdown
-# #### **INIT SPARK CONTEXT AND SET CONFIGURATIONS**
-# %%
 import findspark
 findspark.init('/usr/local/spark')
 
@@ -15,8 +12,6 @@ from pyspark.conf import SparkConf
 from pyspark.sql.types import DoubleType, StringType
 
 
-# %%
-
 conf = SparkConf().setAppName("App")
 conf = (conf.setMaster('local[*]')
         .set('spark.executor.memory', '4G')
@@ -26,9 +21,18 @@ conf = (conf.setMaster('local[*]')
 sc = SparkContext.getOrCreate(conf=conf)
 sqlContext = SQLContext(sc)
 
-# %% markdown
-# #### **LOAD DATA FILES**
-# %%
+
+def show(query, n=10):
+    sqlContext.sql(query).show(n)
+
+
+def save(query, target_path):
+    sqlContext.sql(query).coalesce(1) \
+        .write.mode('overwrite')      \
+        .option("header", "true")     \
+        .format("csv")                \
+        .save(target_path)
+
 processed_path = '/home/altieris/datascience/data/urbs/processed/'
 
 position_events = sqlContext.read.parquet(processed_path+'veiculos/')
@@ -37,31 +41,9 @@ position_events.registerTempTable("veiculos")
 tabelaVeiculo = sqlContext.read.parquet(processed_path+'tabelaveiculo/')
 tabelaVeiculo.registerTempTable("tabela_veiculo")
 
-# %% markdown
-# #### **SHOW DATA**
-# %%
+sqlContext.read.parquet('/home/altieris/datascience/data/urbs/processed/pontoslinha/').registerTempTable("pontos_linha")
 
-
-def executeQuery(table_name):
-    query = 'select * from {} limit 10'.format(table_name)
-
-    return sqlContext.sql(query)
-
-
-# %% markdown
-# #### **Linhas de ônibus**
-# %% markdown
-# Todas as linhas da Rede Integrada do Transporte Coletivo de Curitiba.
-# %%
-#executeQuery('veiculos').toPandas().head(2)
-
-
-# tabelaVeiculo.select(['cod_ponto', 'horario']).filter(
-#     "cod_linha == 507 ").show()
-
- #and hour in (6,7)
- #.filter("cod_linha == 507 ")  \
-events_507 = position_events.select('cod_linha', 'veic', 'lat', 'lon', functions.date_format(functions.unix_timestamp('dthr', 'dd/MM/yyyy HH:mm:ss')
+events_filtered = position_events.select('cod_linha', 'veic', 'lat', 'lon', functions.date_format(functions.unix_timestamp('dthr', 'dd/MM/yyyy HH:mm:ss')
                                                                                              .cast('timestamp'), "yyyy-MM-dd HH:mm:ss").alias('event_timestamp')) \
             .withColumn("year",  functions.year(functions.col('event_timestamp')))  \
             .withColumn("month",  functions.month(functions.col('event_timestamp')))  \
@@ -69,8 +51,9 @@ events_507 = position_events.select('cod_linha', 'veic', 'lat', 'lon', functions
             .withColumn("hour",  functions.hour(functions.col('event_timestamp')))  \
             .withColumn("minute",  functions.minute(functions.col('event_timestamp')))  \
             .withColumn("second",  functions.second(functions.col('event_timestamp')))  \
-            .filter("cod_linha == 507 and veic == 'EL309' and hour in (7,8)")  \
             .sort(functions.asc("event_timestamp"))
+            #.filter("cod_linha in (666,507) and veic in ('GN606','EL309')")  \
+
 
 
 windowSpec = Window.partitionBy('cod_linha', 'veic').orderBy('event_timestamp')
@@ -82,7 +65,7 @@ scriptpath = "/home/altieris/master-thesis/source/fromnotebooks/src/"
 sys.path.append(os.path.abspath(scriptpath))
 
 
-events = events_507.withColumn("last_timestamp", functions.lag("event_timestamp", 1, 0).over(windowSpec))\
+events = events_filtered.withColumn("last_timestamp", functions.lag("event_timestamp", 1, 0).over(windowSpec))\
     .withColumn("last_latitude", functions.lag("lat", 1, 0).over(windowSpec))\
     .withColumn("last_longitude", functions.lag("lon", 1, 0).over(windowSpec))
 
@@ -109,7 +92,7 @@ def haversine(lon1, lat1, lon2, lat2):
 
 
 def create_flag_status(delta_velocity):
-    if delta_velocity is not None and delta_velocity > 5:
+    if delta_velocity is not None and delta_velocity > 15:
         return 'MOVING'
     else:
         return 'STOPPED'
@@ -142,19 +125,28 @@ query = """
           ,evt.hour
           ,evt.minute
           ,evt.second
+          ,concat(
+                  if( length(evt.hour) < 2 , concat(0,evt.hour), evt.hour)
+                  ,':',
+                  if( length(evt.minute) < 2 ,concat(0,evt.minute),evt.minute)
+                  ,':',
+                  if( length(evt.second) < 2 ,concat(0,evt.second),evt.second)
+                  ) as event_time
           ,evt.lat as latitude
           ,evt.lon as longitude
      from events_processed evt
-     where evt.moving_status = 'STOPPED' and cod_linha='507' and evt.veic ='EL309'
+     where evt.moving_status = 'STOPPED'
      order by cod_linha
 """
 
-target_path = '/home/altieris/datascience/data/urbs/processed/stopevents/'
 
-#sqlContext.sql(query).show(10)
+save(query, target_path='/home/altieris/datascience/data/urbs/processed/stopevents/')
 
-sqlContext.sql(query).coalesce(1).write.mode('overwrite').option(
-    "header", "true").format("csv").save(target_path)
+target_path='/home/altieris/datascience/data/urbs/processed/stopevents-parquet/'
+sqlContext.sql(query).coalesce(1) \
+    .write.mode('overwrite')      \
+    .format("parquet")                \
+    .save(target_path)
 
 
 query = """
@@ -165,7 +157,7 @@ with stops as (
           ,event_timestamp as last_stop
           ,lead(event_timestamp) over (partition by veic,moving_status order by event_timestamp asc )  as current_stop
      from events_processed
-     where moving_status = 'STOPPED' and cod_linha='507' and  veic ='EL309'
+     where moving_status = 'STOPPED'
 ),
 trips as (
     select round(sum( evp.delta_time )/60,2)     as delta_time
@@ -192,7 +184,127 @@ select cod_linha
       ,current_stop
 from trips
 """
-# where delta_time <= 10
-target_path = '/home/altieris/datascience/data/urbs/processed/trackingdata/'
-sqlContext.sql(query).coalesce(1).write.mode('overwrite').option(
-    "header", "true").format("csv").save(target_path)
+
+save(query, target_path='/home/altieris/datascience/data/urbs/processed/trackingdata/')
+
+
+stop_events = sqlContext.read.parquet('/home/altieris/datascience/data/urbs/processed/stopevents-parquet/')
+stop_events.registerTempTable('stop_events')
+
+
+query = """
+select * from stop_events
+where cod_linha = 666 and vehicle = 'GN606'
+order by stop_timestamp asc
+limit 10
+"""
+show(query)
+
+
+sqlContext.read.parquet('/home/altieris/datascience/data/urbs/processed/tabelaveiculo/').registerTempTable("tabela_veiculo")
+
+query = """
+select * from tabela_veiculo
+where cod_linha = '666'  and veiculo = 'GN606'
+ limit 10
+"""
+show(query)
+
+
+query = """
+with
+query_1 as (
+    select cod_linha     as line_code
+          ,cod_ponto     as start_point
+          ,horario       as start_time
+          ,tabela        as time_table
+          ,veiculo       as vehicle
+          ,lead(horario) over(partition by cod_linha,tabela,veiculo order by cod_linha, horario)   as end_time
+          ,lead(cod_ponto) over(partition by cod_linha,tabela,veiculo order by cod_linha, horario) as end_point
+          from tabela_veiculo
+          order by cod_linha,horario
+),
+start_end as (
+    select  cod
+           ,sentido
+           ,min(int(seq)) as start_trip
+           ,max(int(seq)) as end_trip
+         from pontos_linha
+    group by cod,sentido
+),
+itinerary as (
+ select ps.cod     as line_code
+       ,ps.sentido as line_way
+       ,ps.num     as start_point
+       ,ps.nome    as ponto_origem
+       ,pe.num     as end_point
+       ,pe.nome    as destination
+  from start_end  ss
+     inner join pontos_linha ps on (ps.cod = ss.cod  and ps.sentido = ss.sentido and ps.seq = ss.start_trip)
+     inner join pontos_linha pe on (pe.cod = ss.cod  and pe.sentido = ss.sentido and pe.seq = ss.end_trip)
+),
+line_way_events_stop as (
+    select svt.cod_linha as line_code
+          ,svt.vehicle
+          ,svt.stop_timestamp
+          ,svt.event_time
+          ,svt.latitude
+          ,svt.longitude
+          ,tv.start_time
+          ,tv.end_time
+          ,tv.time_table
+          ,tv.start_point
+          ,tv.end_point
+          ,it.line_way
+      from stop_events svt
+      inner join query_1 tv on (svt.cod_linha = tv.line_code and svt.vehicle = tv.vehicle)
+      inner join itinerary it on (svt.cod_linha = it.line_code and tv.start_point = it.start_point and tv.end_point = it.end_point)
+      where tv.line_code = '666'  and tv.vehicle = 'GN606'
+         and svt.event_time between tv.start_time and tv.end_time
+  )
+  select line_code
+        ,vehicle
+        ,stop_timestamp
+        ,event_time
+        ,latitude
+        ,longitude
+        ,start_time
+        ,end_time
+        ,time_table
+        ,start_point
+        ,end_point
+        ,line_way
+        ,pl.lat    as busstop_latitude
+        ,pl.lon    as busstop_longitude
+        ,pl.nome   as bus_stop_name
+        ,pl.num    as bus_stop_number
+  from line_way_events_stop lwep
+     inner join pontos_linha  pl on (lwep.line_code = pl.cod and lwep.line_way = pl.sentido )
+"""
+
+events =  sqlContext.sql(query).withColumn("distance",
+            apply_haversine(functions.col('longitude').cast('double'), functions.col('latitude').cast('double'), functions.col('busstop_longitude').cast('double'), functions.col('busstop_latitude').cast('double'))) \
+            .filter("distance < 30")
+            #.orderBy('event_time')
+
+
+target_path='/home/altieris/datascience/data/urbs/processed/event-stop-edges/'
+events.select(["line_code","latitude","longitude","vehicle","event_time","line_way","bus_stop_number"])\
+    .coalesce(1) \
+    .write.mode('overwrite')      \
+    .option("header", "true")     \
+    .format("csv")                \
+    .save(target_path)
+
+
+
+#
+# LOAD CSV WITH HEADERS FROM "file:///stop-events.csv" AS row
+# with row limit 100
+# MATCH (l:Line {line_code:row.cod_linha})-[:HAS_TRIP]->(t:Trip)-[:HAS_SCHEDULE_AT]->(s:Schedule {vehicle:row.vehicle}) , (st:Stop {latitude:row.latitude, longitude:row.longitude, event_time:row.event_time,vehicle:row.vehicle})
+# where time(row.event_time) >= time(s.start_time) - duration({  minutes: 5 }) and time(row.event_time) <= time(s.end_time) + duration({  minutes: 5 })
+# with s, st, t, row
+# call spatial.withinDistance('layer_curitiba',{lon:toFloat(st.longitude),lat:toFloat(st.latitude)},0.007) yield node
+# with s,st,t, node as n where (n)-[:NEXT_STOP {line_way:t.line_way}]->()
+#
+# MERGE (st)-[:EVENT_STOP {line_way:t.line_way}]->(n)
