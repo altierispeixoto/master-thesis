@@ -75,19 +75,14 @@ LOAD CSV WITH HEADERS FROM "file:///stop-events.csv" AS row
 CREATE (s:Stop {geometry : 'POINT(' + row.longitude +' '+ row.latitude +')', latitude:row.latitude, longitude:row.longitude,event_timestamp:row.stop_timestamp, event_time:row.event_time,line_code: row.cod_linha, vehicle:row.vehicle })
 return count(s)
 
-CREATE INDEX ON :Stop(line_code,vehicle,latitude,longitude,event_timestamp)
-
-CREATE INDEX ON :Stop(line_code,vehicle,latitude,longitude,event_time)
 
 CREATE INDEX ON :Stop(event_timestamp,vehicle)
-
-CREATE INDEX ON :Stop(line_code,vehicle)
-
+CREATE INDEX ON :Stop(line_code,latitude,longitude,vehicle,event_timestamp)
 
 
 USING PERIODIC COMMIT 100000
 LOAD CSV WITH HEADERS FROM "file:///tracking.csv" AS row
-with row where toFloat(row.delta_time) <= 20
+with row where toFloat(row.delta_time) <= 14400
 MATCH (s0:Stop {event_timestamp:row.last_stop,vehicle:row.veic}),(s1:Stop {event_timestamp:row.current_stop,vehicle:row.veic})
 MERGE (s0)-[m:MOVED_TO {delta_time: row.delta_time, delta_distance: row.delta_distance,delta_velocity:row.delta_velocity}]->(s1)
 return s0,m,s1
