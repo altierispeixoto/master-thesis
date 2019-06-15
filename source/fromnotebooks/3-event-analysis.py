@@ -104,6 +104,7 @@ apply_haversine = functions.udf(lambda lon0, lat0, lon1, lat1, : haversine(
 apply_moving = functions.udf(
     lambda velocity, : create_flag_status(velocity), StringType())
 
+
 events_processed = events.withColumn("delta_time", functions.unix_timestamp('event_timestamp') - functions.unix_timestamp('last_timestamp')) \
     .withColumn("delta_distance",
                 apply_haversine(functions.col('lon').cast('double'), functions.col('lat').cast('double'), functions.col('last_longitude').cast('double'), functions.col('last_latitude').cast('double')))\
@@ -135,7 +136,7 @@ query = """
           ,evt.lat as latitude
           ,evt.lon as longitude
      from events_processed evt
-     where evt.moving_status = 'STOPPED'
+     where evt.moving_status = 'STOPPED' and evt.cod_linha = '666'
      order by cod_linha
 """
 
@@ -149,25 +150,25 @@ sqlContext.sql(query).coalesce(1) \
     .save(target_path)
 
 
+
 query = """
 
 with stops as (
     select cod_linha
           ,veic
           ,event_timestamp as last_stop
-          ,lead(event_timestamp) over (partition by veic,moving_status order by event_timestamp asc )  as current_stop
+          ,lead(event_timestamp) over (partition by veic, moving_status order by event_timestamp asc )  as current_stop
      from events_processed
-     where moving_status = 'STOPPED'
+     where moving_status = 'STOPPED' and cod_linha = '666'
 ),
 trips as (
-    select round(sum( evp.delta_time )/60,2)     as delta_time
-          ,round(sum( if(evp.delta_time is null, 0,evp.delta_distance) )/1000,2) as delta_distance
-          ,round(avg(evp.delta_velocity),2) as delta_velocity
+    select sum( if(evp.delta_time is null, 0, evp.delta_distance)) as delta_distance
+          ,round(avg(evp.delta_velocity), 2) as delta_velocity
           ,evp.veic
           ,evp.cod_linha
           ,st.last_stop
           ,st.current_stop
-     from events_processed evp,stops st
+     from events_processed evp, stops st
      where
             (evp.event_timestamp between st.last_stop and st.current_stop)
             and (evp.veic = st.veic)
@@ -177,13 +178,16 @@ trips as (
 )
 select cod_linha
       ,veic
-      ,delta_time
+      ,unix_timestamp(current_stop) - unix_timestamp(last_stop) as delta_time
       ,delta_distance
       ,delta_velocity
       ,last_stop
       ,current_stop
 from trips
+where cod_linha = '666'
 """
+
+show(query,n=30)
 
 save(query, target_path='/home/altieris/datascience/data/urbs/processed/trackingdata/')
 
@@ -280,6 +284,7 @@ line_way_events_stop as (
         ,pl.num    as bus_stop_number
   from line_way_events_stop lwep
      inner join pontos_linha  pl on (lwep.line_code = pl.cod and lwep.line_way = pl.sentido )
+     where line_code = '666'
 """
 
 events =  sqlContext.sql(query).withColumn("distance",
@@ -295,16 +300,3 @@ events.select(["line_code","latitude","longitude","vehicle","event_time","line_w
     .option("header", "true")     \
     .format("csv")                \
     .save(target_path)
-
-
-
-#
-# LOAD CSV WITH HEADERS FROM "file:///stop-events.csv" AS row
-# with row limit 100
-# MATCH (l:Line {line_code:row.cod_linha})-[:HAS_TRIP]->(t:Trip)-[:HAS_SCHEDULE_AT]->(s:Schedule {vehicle:row.vehicle}) , (st:Stop {latitude:row.latitude, longitude:row.longitude, event_time:row.event_time,vehicle:row.vehicle})
-# where time(row.event_time) >= time(s.start_time) - duration({  minutes: 5 }) and time(row.event_time) <= time(s.end_time) + duration({  minutes: 5 })
-# with s, st, t, row
-# call spatial.withinDistance('layer_curitiba',{lon:toFloat(st.longitude),lat:toFloat(st.latitude)},0.007) yield node
-# with s,st,t, node as n where (n)-[:NEXT_STOP {line_way:t.line_way}]->()
-#
-# MERGE (st)-[:EVENT_STOP {line_way:t.line_way}]->(n)

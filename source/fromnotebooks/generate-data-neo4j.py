@@ -159,7 +159,7 @@ with start_end as (
   from start_end  ss
      inner join pontos_linha ps on (ps.cod = ss.cod  and ps.sentido = ss.sentido and ps.seq = ss.start_trip)
      inner join pontos_linha pe on (pe.cod = ss.cod  and pe.sentido = ss.sentido and pe.seq = ss.end_trip)
-
+ where ps.cod = '666'
 """
 
 save(query, target_path='/home/altieris/datascience/data/urbs/processed/trip-endpoints-neo4j/')
@@ -174,6 +174,7 @@ select cod_linha
       ,tabela
       ,veiculo
       from tabela_veiculo
+      where cod_linha = '666'
       order by cod_linha,horario
 """
 save(query, target_path='/home/altieris/datascience/data/urbs/processed/schedules-neo4j/')
@@ -193,6 +194,7 @@ select cod_linha     as line_code
       order by cod_linha,horario
 )
 select * from query_1
+where line_code = '666'
 """
 
 save(query, target_path='/home/altieris/datascience/data/urbs/processed/trips/')
