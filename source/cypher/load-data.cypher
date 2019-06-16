@@ -40,6 +40,12 @@ CREATE(bss) - [: NEXT_STOP {
    }]->(bse)
 
 
+MATCH (p1:BusStop)-[r:NEXT_STOP]->(p2:BusStop)
+SET r.distance = distance(point({longitude: toFloat(p1.longitude),latitude: toFloat(p1.latitude) ,crs: 'wgs-84'})
+                   ,point({longitude: toFloat(p2.longitude),latitude: toFloat(p2.latitude) ,crs: 'wgs-84'}))
+
+
+
 USING PERIODIC COMMIT 10000
 LOAD CSV WITH HEADERS FROM "file:///trip-endpoints.csv" AS row
 MATCH(l:Line {line_code:row.line_code}),(bs0:BusStop {number:row.origin}),(bs1:BusStop {number:row.destination})

@@ -46,3 +46,43 @@ return line_name , line_way, min(start_event) as start_event, end_event, apoc.co
       ,apoc.coll.avg(delta_velocity)       as velocity_in_kmh
       ,stop
 order by start_event, end_event
+
+
+CALL algo.pageRank.stream('BusStop', 'NEXT_STOP', {iterations:20, dampingFactor:0.85})
+YIELD nodeId, score
+RETURN algo.asNode(nodeId).name AS page,score
+ORDER BY score DESC
+
+
+CALL algo.articleRank.stream('BusStop', 'NEXT_STOP', {iterations:20, dampingFactor:0.85})
+YIELD nodeId, score
+RETURN algo.asNode(nodeId).name AS page,score
+ORDER BY score DESC
+
+
+CALL algo.betweenness.stream('BusStop', 'NEXT_STOP',{direction:'out'})
+YIELD nodeId, centrality
+RETURN algo.asNode(nodeId).name AS page,centrality
+ORDER BY centrality DESC
+
+
+CALL algo.closeness.harmonic.stream('BusStop', 'NEXT_STOP')
+YIELD nodeId, centrality
+RETURN algo.asNode(nodeId).name AS node, centrality
+ORDER BY centrality DESC
+LIMIT 20;
+
+CALL algo.pageRank.stream('BusStop', 'NEXT_STOP', {iterations:20, dampingFactor:0.85})
+YIELD nodeId, score
+with algo.asNode(nodeId) as bs ,score ORDER BY score DESC
+MATCH()-[r:NEXT_STOP]->(bs) return distinct r.line_name,r.line_code,r.line_way,bs.name
+
+CALL algo.louvain.stream('BusStop', 'NEXT_STOP', {includeIntermediateCommunities: true})
+YIELD nodeId, communities
+with algo.asNode(nodeId) AS bs, communities
+MATCH()-[r:NEXT_STOP]->(bs) return bs.name,bs.latitude,bs.longitude,communities
+
+CALL algo.louvain.stream('BusStop', 'NEXT_STOP', {})
+YIELD nodeId, community
+RETURN algo.asNode(nodeId).name AS user, community
+ORDER BY community;
