@@ -289,7 +289,7 @@ line_way_events_stop as (
 
 events =  sqlContext.sql(query).withColumn("distance",
             apply_haversine(functions.col('longitude').cast('double'), functions.col('latitude').cast('double'), functions.col('busstop_longitude').cast('double'), functions.col('busstop_latitude').cast('double'))) \
-            .filter("distance < 30")
+            .filter("distance < 60")
             #.orderBy('event_time')
 
 

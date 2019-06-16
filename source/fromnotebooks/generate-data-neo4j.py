@@ -125,8 +125,11 @@ CREATE OR REPLACE TEMPORARY VIEW rota_sequenciada AS
 run(query_view_rota_sequenciada)
 
 query_rota_sequenciada = """
-    select cod_linha
+    select distinct
+           cod_linha
           ,sentido_linha
+          ,seq_inicio
+          ,seq_fim
           ,ponto_inicio
           ,nome_ponto_inicio
           ,ponto_final
@@ -136,7 +139,51 @@ query_rota_sequenciada = """
           ,nome_cor
           ,somente_cartao
          from rota_sequenciada
+         where cod_linha = '010' and sentido_linha = 'Horario'
+         order by int(seq_inicio)
+                 ,int(seq_fim)
 """
+show(query_rota_sequenciada,n=400)
+
+
+#
+# query_rota_sequenciada = """
+# with query_1 as (
+#     select distinct
+#            cod_linha
+#           ,sentido_linha
+#           ,seq_inicio
+#           ,seq_fim
+#           ,ponto_inicio
+#           ,nome_ponto_inicio
+#           ,ponto_final
+#           ,nome_ponto_final
+#           ,categoria_servico
+#           ,nome_linha
+#           ,nome_cor
+#           ,somente_cartao
+#          from rota_sequenciada
+# )
+#     select cod_linha
+#           ,sentido_linha
+#           ,seq_inicio
+#           ,seq_fim
+#           ,count(seq_inicio)
+#           ,count(seq_fim)
+#          from query_1
+#          group by cod_linha
+#                ,sentido_linha
+#                ,seq_inicio
+#                ,seq_fim
+#     having count(seq_inicio) > 1 and count(seq_fim) >1
+#     order by  cod_linha
+#           ,sentido_linha
+#           ,int(seq_inicio)
+#           ,int(seq_fim)
+# """
+#
+# show(query_rota_sequenciada,n=300)
+
 
 save(query_rota_sequenciada, target_path='/home/altieris/datascience/data/urbs/processed/routes-neo4j/')
 
