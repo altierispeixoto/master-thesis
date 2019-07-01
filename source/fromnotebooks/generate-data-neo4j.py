@@ -16,7 +16,6 @@ conf = (conf.setMaster('local[*]')
 sc = SparkContext.getOrCreate(conf=conf)
 sqlContext = SQLContext(sc)
 
-
 # -------------------------------------------------------------------------------
 
 
