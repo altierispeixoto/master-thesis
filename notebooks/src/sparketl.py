@@ -26,7 +26,7 @@ class ETLSpark:
         df = self.sqlContext.read.json(src).withColumn("filepath", input_file_name())
 
         split_col = functions.split(df['filepath'], '/')
-        df = df.withColumn('filename', split_col.getItem(10))
+        df = df.withColumn('filename', split_col.getItem(9))
 
         split = functions.split(df['filename'], '_')
 
