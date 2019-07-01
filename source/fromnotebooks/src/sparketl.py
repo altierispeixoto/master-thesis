@@ -1,6 +1,6 @@
 import findspark
 
-findspark.init('/usr/local/spark')
+findspark.init()
 from pyspark.conf import SparkConf
 from pyspark.context import SparkContext
 from pyspark.sql import SQLContext
