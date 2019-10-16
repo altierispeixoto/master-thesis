@@ -37,7 +37,6 @@ class ETLSpark:
         return df
 
     def transform(self, src_data, target_path, coalesce=1):
-        #src_data.coalesce(coalesce).write.mode('overwrite').format("parquet").save(target_path)
         src_data.coalesce(coalesce).write.mode('overwrite').format("parquet").save(target_path)
         del src_data
         gc.collect()
