@@ -94,8 +94,7 @@ decompress_tasks = []
 
 t_docker = DockerOperator(
     task_id='spark-etl',
-    image='bde2020/spark-master:latest',
-    container_name='spark-master',
+    image='altr/spark',
     api_version='auto',
     auto_remove=True,
     environment={
@@ -104,7 +103,7 @@ t_docker = DockerOperator(
     },
     volumes=['/home/altieris/master-thesis/airflow/simple-app:/simple-app'
         , '/home/altieris/master-thesis/airflow/data:/data'],
-    command='/spark/bin/spark-Dockerfile --master local[*] /simple-app/SimpleApp.py',
+    command='/spark/bin/spark-submit --master local[*] /simple-app/SimpleApp.py',
     docker_url='unix://var/run/docker.sock',
     network_mode='bridge', dag=dag
 )
@@ -126,7 +125,7 @@ for t in config['etl_tasks']:
         dag=dag,
     ))
 
-for i in range(0, len(download_tasks)):
-    start >> download_tasks[i] >> decompress_tasks[i] >> t_docker
+for j in range(0, len(download_tasks)):
+    start >> download_tasks[j] >> decompress_tasks[j] >> t_docker
 
 #https://itnext.io/how-to-create-a-simple-etl-job-locally-with-pyspark-postgresql-and-docker-ea53cd43311d
