@@ -1,22 +1,24 @@
-"""SimpleApp.py"""
 import os
+
+#directories = os.listdir("/home/altieris/master-thesis/airflow/data/raw/")
 
 directories = os.listdir("/data/raw/")
 
-import psycopg2
 
-conn = psycopg2.connect(
-        host = "172.18.0.4",
-        database = "dw",
-        user = "airflow",
-        password = "airflow")
-
+from argparse import ArgumentParser
 from sparketl import ETLSpark
 etlspark = ETLSpark()
 
-for dir in directories:
-    source_path = "/data/raw/{}".format(dir)
-    target_path = "/data/processed/{}".format(dir)
+parser = ArgumentParser()
+parser.add_argument("-f", "--file", dest="table",
+                    help="write report to table", metavar="FILE")
 
-    raw_data = etlspark.extract(source_path)
-    etlspark.transform(raw_data, target_path)
+args = parser.parse_args()
+print(args.table)
+
+source_path = "/data/raw/{}".format(args.table)
+target_path = "/data/processed/{}".format(args.table)
+
+raw_data = etlspark.extract(source_path)
+etlspark.load_to_database(raw_data, args.table)
+etlspark.transform(raw_data, target_path)
