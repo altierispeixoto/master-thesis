@@ -1,3 +1,4 @@
+#### Airflow 1.10.4 docker image
 FROM python:3.7-slim-stretch
 
 LABEL maintainer="Puckel_"
