@@ -104,7 +104,7 @@ t_docker = DockerOperator(
     },
     volumes=['/home/altieris/master-thesis/airflow/simple-app:/simple-app'
         , '/home/altieris/master-thesis/airflow/data:/data'],
-    command='/spark/bin/spark-submit --master local[*] /simple-app/SimpleApp.py',
+    command='/spark/bin/spark-Dockerfile --master local[*] /simple-app/SimpleApp.py',
     docker_url='unix://var/run/docker.sock',
     network_mode='bridge', dag=dag
 )
