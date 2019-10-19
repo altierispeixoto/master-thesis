@@ -92,21 +92,7 @@ start = DummyOperator(task_id='start', dag=dag)
 download_tasks = []
 decompress_tasks = []
 
-t_docker = DockerOperator(
-    task_id='spark-etl',
-    image='altr/spark',
-    api_version='auto',
-    auto_remove=True,
-    environment={
-        'PYSPARK_PYTHON': "python3",
-        'SPARK_HOME': "/spark"
-    },
-    volumes=['/home/altieris/master-thesis/airflow/simple-app:/simple-app'
-        , '/home/altieris/master-thesis/airflow/data:/data'],
-    command='/spark/bin/spark-submit --master local[*] /simple-app/SimpleApp.py',
-    docker_url='unix://var/run/docker.sock',
-    network_mode='bridge', dag=dag
-)
+spark_tasks = []
 
 for t in config['etl_tasks']:
     download_tasks.append(PythonOperator(
@@ -125,7 +111,26 @@ for t in config['etl_tasks']:
         dag=dag,
     ))
 
+    command = '/spark/bin/spark-submit --master local[*] --driver-class-path /simple-app/jars/postgresql-42.2.8.jar  /simple-app/SimpleApp.py -f {}'\
+        .format(config['etl_tasks'][t]['folder'])
+
+    spark_tasks.append(DockerOperator(
+        task_id='spark-etl_{}'.format(t),
+        image='altr/spark',
+        api_version='auto',
+        auto_remove=True,
+        environment={
+            'PYSPARK_PYTHON': "python3",
+            'SPARK_HOME': "/spark"
+        },
+        volumes=['/home/altieris/master-thesis/airflow/simple-app:/simple-app'
+            , '/home/altieris/master-thesis/airflow/data:/data'],
+        command=command,
+        docker_url='unix://var/run/docker.sock',
+        network_mode='host', dag=dag
+    ))
+
 for j in range(0, len(download_tasks)):
-    start >> download_tasks[j] >> decompress_tasks[j] >> t_docker
+    start >> download_tasks[j] >> decompress_tasks[j] >> spark_tasks[j]
 
 #https://itnext.io/how-to-create-a-simple-etl-job-locally-with-pyspark-postgresql-and-docker-ea53cd43311d
