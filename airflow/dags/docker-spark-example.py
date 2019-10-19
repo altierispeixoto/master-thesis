@@ -20,7 +20,6 @@ with DAG('docker_dag_spark', default_args=default_args, schedule_interval=None, 
     t_docker = DockerOperator(
         task_id='docker_command',
         image='altr/spark:latest',
-        container_name='spark-master',
         api_version='auto',
         auto_remove=True,
         environment={
