@@ -91,6 +91,25 @@ services:
             - POSTGRES_DB=airflow
             - REDIS_PASSWORD=redispass
         command: worker
+    metabase-app:
+        image: metabase/metabase
+        restart: always
+        ports:
+            - 3001:3000
+        volumes:
+            # declare your mount volume /host/dir:/container/dir
+            - /metabase-data:/metabase-data
+        environment:
+            MB_DB_TYPE: postgres
+            MB_DB_DBNAME: metabase
+            MB_DB_PORT: 5432
+            MB_DB_USER: airflow
+            MB_DB_PASS: airflow
+            MB_DB_HOST: postgres
+        depends_on:
+            - postgres
+        links:
+            - postgres
 #    spark-master:
 #        image: altr/spark
 #        container_name: spark-master
