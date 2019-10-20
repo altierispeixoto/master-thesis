@@ -34,13 +34,10 @@ class ETLSpark:
 
         split = functions.split(df['filename'], '_')
 
-        # sourcedate = str(split.getItem(0))+'-'+str(split.getItem(1))+'-'+str(split.getItem(2))
-        df = df.withColumn('year', split.getItem(0))
-        df = df.withColumn('month', split.getItem(1))
-        df = df.withColumn('day', split.getItem(2))
+        df =  df.withColumn('datareferencia', functions.concat(split.getItem(0),functions.lit("-"), split.getItem(1),functions.lit("-") ,split.getItem(2)))
 
-
-
+        dropcolumns = ["filepath", "filename"]
+        df = df.toDF(*[c.lower() for c in df.columns]).drop(*dropcolumns)
         return df
 
     @staticmethod
