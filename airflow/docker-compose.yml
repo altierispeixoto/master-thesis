@@ -110,6 +110,27 @@ services:
             - postgres
         links:
             - postgres
+    neo4j:
+        image: neo4j:3.5.6
+        restart: always
+        ports:
+          - 7474:7474
+          - 7687:7687
+        volumes:
+          - ./neo4j/data:/data
+          - ./neo4j/logs:/logs
+          - ./neo4j/conf:/conf
+          - ./neo4j/plugins:/plugins
+          - ./neo4j/import:/import
+        environment:
+            NEO4J_dbms_security_procedures_unrestricted: apoc:\\\*,algo:\\\*
+            NEO4J_apoc_import_file_enabled: "true"
+            NEO4J_dbms_memory_pagecache_size: "4G"
+            NEO4J_dbms_memory_heap_initial__size: "2G"
+            NEO4J_dbms_memory_heap_max__size: "5G"
+
+
+
 #    spark-master:
 #        image: altr/spark
 #        container_name: spark-master

@@ -1,3 +1,4 @@
 wget
 pandas
 urllib3
+neo4j
