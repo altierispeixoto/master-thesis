@@ -34,7 +34,7 @@ class ETLSpark:
 
         split = functions.split(df['filename'], '_')
 
-        df =  df.withColumn('datareferencia', functions.concat(split.getItem(0),functions.lit("-"), split.getItem(1),functions.lit("-") ,split.getItem(2)))
+        df =  df.withColumn('datareferencia', functions.concat(split.getItem(0), functions.lit("-"), split.getItem(1), functions.lit("-") , split.getItem(2)))
 
         dropcolumns = ["filepath", "filename"]
         df = df.toDF(*[c.lower() for c in df.columns]).drop(*dropcolumns)
