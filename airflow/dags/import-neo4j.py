@@ -13,7 +13,7 @@ DEFAULT_ARGS = {
     'retries': 1,
     'retry_delay': timedelta(minutes=5)
 }
-NEO4J_URI = 'bolt://172.18.0.4:7687' #Variable.get('NEO4J_URI')
+NEO4J_URI = 'bolt://10.5.0.9:7687' #Variable.get('NEO4J_URI')
 NEO4J_USER = "neo4j" #Variable.get('NEO4J_USER')
 NEO4J_PASSWORD = "h4ck3r" #Variable.get('NEO4J_PASSWORD')
 

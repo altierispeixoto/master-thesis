@@ -37,6 +37,7 @@ services:
             # Uncomment to include custom plugins
             - ./plugins:/usr/local/airflow/plugins
             - ./data:/usr/local/airflow/data
+            - ./neo4j:/usr/local/airflow/neo4j
             -  /var/run/docker.sock:/var/run/docker.sock:ro
         ports:
             - "8080:8080"
@@ -97,6 +98,7 @@ services:
             # Uncomment to include custom plugins
             - ./plugins:/usr/local/airflow/plugins
             - ./data:/usr/local/airflow/data
+            - ./neo4j:/usr/local/airflow/neo4j
             -  /var/run/docker.sock:/var/run/docker.sock:ro
         environment:
             - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
