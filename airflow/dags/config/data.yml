@@ -1,30 +1,32 @@
 base_url: "http://dadosabertos.c3sl.ufpr.br/curitibaurbs/"
 
 etl_tasks:
-  pontos_linha:
-    folder: "pontoslinha"
-    file: "pontosLinha.json.xz"
-
-  tabela_linha:
-    folder: "tabelalinha"
-    file: "tabelaLinha.json.xz"
-
-  tabela_trechositinerarios:
-    folder: "trechositinerarios"
-    file: "trechosItinerarios.json.xz"
-
-  tabela_tabelaveiculo:
-    folder: "tabelaveiculo"
-    file: "tabelaVeiculo.json.xz"
-
-  tabela_shapelinha:
-    folder: "shapelinha"
-    file: "shapeLinha.json.xz"
-
   tabela_linhas:
     folder: "linhas"
     file: "linhas.json.xz"
 
-  tabela_veiculos:
-    folder: "veiculos"
-    file: "veiculos.json.xz"
+  pontos_linha:
+    folder: "pontoslinha"
+    file: "pontosLinha.json.xz"
+
+#  tabela_linha:
+#    folder: "tabelalinha"
+#    file: "tabelaLinha.json.xz"
+#
+#  tabela_trechositinerarios:
+#    folder: "trechositinerarios"
+#    file: "trechosItinerarios.json.xz"
+#
+#  tabela_tabelaveiculo:
+#    folder: "tabelaveiculo"
+#    file: "tabelaVeiculo.json.xz"
+
+#  tabela_shapelinha:
+#    folder: "shapelinha"
+#    file: "shapeLinha.json.xz"
+
+
+
+#  tabela_veiculos:
+#    folder: "veiculos"
+#    file: "veiculos.json.xz"
