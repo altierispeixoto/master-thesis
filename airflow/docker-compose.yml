@@ -3,6 +3,9 @@ services:
     redis:
         image: 'redis:5.0.5'
         command: redis-server --requirepass redispass
+        networks:
+            airflow-network:
+                ipv4_address: 10.5.0.2
     postgres:
         image: postgres:9.6
         environment:
@@ -13,6 +16,9 @@ services:
             - ./db-data:/var/lib/postgresql/data
         ports:
             - "5432:5432"
+        networks:
+            airflow-network:
+                ipv4_address: 10.5.0.3
     webserver:
         build: .
         restart: always
@@ -40,6 +46,9 @@ services:
             interval: 30s
             timeout: 30s
             retries: 3
+        networks:
+            airflow-network:
+                ipv4_address: 10.5.0.4
     flower:
         #image: puckel/docker-airflow:1.10.4
         build: .
@@ -52,6 +61,9 @@ services:
         ports:
             - "5555:5555"
         command: flower
+        networks:
+            airflow-network:
+                ipv4_address: 10.5.0.5
     scheduler:
         #image: puckel/docker-airflow:1.10.4
         build: .
@@ -71,6 +83,9 @@ services:
             - POSTGRES_DB=airflow
             - REDIS_PASSWORD=redispass
         command: scheduler
+        networks:
+            airflow-network:
+                ipv4_address: 10.5.0.6
     worker:
         #image: puckel/docker-airflow:1.10.4
         build: .
@@ -91,6 +106,9 @@ services:
             - POSTGRES_DB=airflow
             - REDIS_PASSWORD=redispass
         command: worker
+        networks:
+            airflow-network:
+                ipv4_address: 10.5.0.7
     metabase-app:
         image: metabase/metabase
         restart: always
@@ -110,6 +128,9 @@ services:
             - postgres
         links:
             - postgres
+        networks:
+            airflow-network:
+                ipv4_address: 10.5.0.8
     neo4j:
         image: neo4j:3.5.6
         restart: always
@@ -128,7 +149,16 @@ services:
             NEO4J_dbms_memory_pagecache_size: "4G"
             NEO4J_dbms_memory_heap_initial__size: "2G"
             NEO4J_dbms_memory_heap_max__size: "5G"
-
+        networks:
+            airflow-network:
+                ipv4_address: 10.5.0.9
+networks:
+  airflow-network:
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 10.5.0.0/16
+         gateway: 10.5.0.1
 
 
 #    spark-master:

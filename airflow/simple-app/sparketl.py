@@ -46,7 +46,7 @@ class ETLSpark:
         print(df.show(5))
 
         db_properties = {}
-        db_url = "jdbc:postgresql://172.20.0.3:5432/dw?user=airflow&password=airflow"
+        db_url = "jdbc:postgresql://10.5.0.3:5432/dw?user=airflow&password=airflow"
         db_properties['username'] = "airflow"
         db_properties['password'] = "airflow"
         db_properties['driver'] = "org.postgresql.Driver"
