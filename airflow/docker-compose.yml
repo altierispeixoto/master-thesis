@@ -111,28 +111,28 @@ services:
         networks:
             airflow-network:
                 ipv4_address: 10.5.0.7
-    metabase-app:
-        image: metabase/metabase
-        restart: always
-        ports:
-            - 3001:3000
-        volumes:
-            # declare your mount volume /host/dir:/container/dir
-            - /metabase-data:/metabase-data
-        environment:
-            MB_DB_TYPE: postgres
-            MB_DB_DBNAME: metabase
-            MB_DB_PORT: 5432
-            MB_DB_USER: airflow
-            MB_DB_PASS: airflow
-            MB_DB_HOST: postgres
-        depends_on:
-            - postgres
-        links:
-            - postgres
-        networks:
-            airflow-network:
-                ipv4_address: 10.5.0.8
+#    metabase-app:
+#        image: metabase/metabase
+#        restart: always
+#        ports:
+#            - 3001:3000
+#        volumes:
+#            # declare your mount volume /host/dir:/container/dir
+#            - /metabase-data:/metabase-data
+#        environment:
+#            MB_DB_TYPE: postgres
+#            MB_DB_DBNAME: metabase
+#            MB_DB_PORT: 5432
+#            MB_DB_USER: airflow
+#            MB_DB_PASS: airflow
+#            MB_DB_HOST: postgres
+#        depends_on:
+#            - postgres
+#        links:
+#            - postgres
+#        networks:
+#            airflow-network:
+#                ipv4_address: 10.5.0.8
     neo4j:
         image: neo4j:3.5.6
         restart: always

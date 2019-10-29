@@ -57,20 +57,20 @@ class ETLSpark:
         # Save the dataframe to the table.
         df.write.jdbc(url=db_url, table=tabletarget, mode='overwrite', properties=db_properties)
 
-    def load_from_database(self, tablename):
+    def load_from_database(self, query):
         db_properties = {}
         db_url = "jdbc:postgresql://10.5.0.3:5432/dw?user=airflow&password=airflow"
         db_properties['username'] = "airflow"
         db_properties['password'] = "airflow"
         db_properties['driver'] = "org.postgresql.Driver"
 
-        df =  self.sqlContext.read.jdbc(url=db_url,table= "(select * from linhas_stg limit 10) as q1", properties=db_properties)
+        df = self.sqlContext.read.jdbc(url=db_url, table=query, properties=db_properties)
 
-        #df = DataFrameReader(self.sqlContext).jdbc(url=db_url, table=tablesource, properties=db_properties)
         print(df.show(5))
         return df
 
     def save(self, src_data, target_path, coalesce=1, format="parquet"):
-        src_data.coalesce(coalesce).write.mode('overwrite').format(format).save(target_path)
+        src_data.coalesce(coalesce).write.mode('overwrite').option("header", "true").format(format).save(target_path)
         del src_data
         gc.collect()
+

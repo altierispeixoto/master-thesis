@@ -30,3 +30,130 @@ etl_tasks:
 #  tabela_veiculos:
 #    folder: "veiculos"
 #    file: "veiculos.json.xz"
+
+etl_queries:
+  lines: (select cod, categoria_servico, nome, nome_cor, somente_cartao from linhas_stg) q1
+  busstops: (select distinct nome, num, tipo, lat, lon from pontoslinha_stg) q1
+  routes: (select distinct
+            cod_linha
+            ,sentido_linha
+            ,cast(seq_inicio as int) as seq_inicio
+            ,cast(seq_fim as int) as seq_fim
+            ,ponto_inicio
+            ,nome_ponto_inicio
+            ,ponto_final
+            ,nome_ponto_final
+            ,categoria_servico
+            ,nome_linha
+            ,nome_cor
+            ,somente_cartao
+        from rota_sequenciada
+        order by  seq_inicio,seq_fim
+    ) q1
+
+  trip-endpoints: ( with start_end as
+                    (
+                        select  cod
+                        ,sentido
+                        ,min(cast(seq as int)) as start_trip
+                        ,max(cast(seq as int)) as end_trip
+                        from pontoslinha_stg
+                        group by cod,sentido
+                    )
+                    select ps.cod     as line_code
+                        ,ps.sentido
+                        ,ps.num     as origin
+                        ,ps.nome    as ponto_origem
+                        ,pe.num     as destination
+                        ,pe.nome    as ponto_destino
+                    from start_end  ss
+                      inner join pontoslinha_stg ps on (ps.cod = ss.cod  and ps.sentido = ss.sentido and cast(ps.seq as int) = ss.start_trip)
+                      inner join pontoslinha_stg pe on (pe.cod = ss.cod  and pe.sentido = ss.sentido and cast(pe.seq as  int) = ss.end_trip) ) q1
+
+  schedules: ( select cod_linha
+              ,cod_ponto
+              ,horario
+              ,nome_linha
+              ,tabela
+              ,veiculo
+              from tabelaveiculo_stg
+              order by cod_linha,horario
+          ) q1
+
+  trips: (with query_1
+          as (
+            select cod_linha     as line_code
+            ,cod_ponto     as start_point
+            ,horario       as start_time
+            ,tabela        as time_table
+            ,veiculo       as vehicle
+            ,lead(horario) over(partition by cod_linha,tabela,veiculo order by cod_linha, horario)   as end_time
+            ,lead(cod_ponto) over(partition by cod_linha,tabela,veiculo order by cod_linha, horario) as end_point
+            from tabelaveiculo_stg
+            order by cod_linha,horario
+          )
+    select * from query_1   ) q1
+
+
+neo4j_import:
+  lines:
+    cypher_query:
+      LOAD CSV WITH HEADERS FROM 'file:///lines.csv' AS row
+            CREATE (l:Line)
+            set   l.line_code  = row.cod
+            ,l.category   = row.categoria_servico
+            ,l.name       = row.nome
+            ,l.color      = row.nome_cor
+            ,l.card_only  = row.somente_cartao
+            RETURN count(l);
+
+  busstops:
+    cypher_query:
+        USING PERIODIC COMMIT 10000
+             LOAD CSV WITH HEADERS FROM "file:///busstops.csv" AS row
+             create (bs:BusStop)
+             set bs.name       = row.nome
+                 ,bs.number    = row.num
+                 ,bs.type      = row.tipo
+                 ,bs.geometry  = 'POINT(' + row.lon +' '+ row.lat +')'
+              ,bs.latitude  = row.lat
+              ,bs.longitude = row.lon
+              WITH bs
+              CALL spatial.addNode('layer_curitiba',bs) YIELD node
+              RETURN count(node);
+  routes:
+    cypher_query:
+      'USING PERIODIC COMMIT 1000
+      LOAD CSV WITH HEADERS FROM "file:///routes.csv" AS row
+      MATCH(bss: BusStop {number: row.ponto_inicio}), (bse: BusStop {number: row.ponto_final})
+      CREATE(bss) - [: NEXT_STOP {
+         line_code: row.cod_linha
+        ,line_way: row.sentido_linha
+        ,service_category: row.categoria_servico
+        ,line_name: row.nome_linha
+        ,color_name: row.nome_cor
+        ,card_only: row.somente_cartao
+      }]->(bse)'
+
+  routes_distance:
+    cypher_query:
+      "MATCH (p1:BusStop)-[r:NEXT_STOP]->(p2:BusStop)
+          SET r.distance = distance(point({longitude: toFloat(p1.longitude),latitude: toFloat(p1.latitude) ,crs: 'wgs-84'})
+          ,point({longitude: toFloat(p2.longitude),latitude: toFloat(p2.latitude) ,crs: 'wgs-84'}))"
+
+  trip_endpoints:
+    cypher_query:
+      'USING PERIODIC COMMIT 10000
+       LOAD CSV WITH HEADERS FROM "file:///trip-endpoints.csv" AS row
+        MATCH(l:Line {line_code:row.line_code}),(bs0:BusStop {number:row.origin}),(bs1:BusStop {number:row.destination})
+        MERGE(l)-[:HAS_TRIP]->(t:Trip {line_way:row.sentido})
+        MERGE(t)-[:STARTS_ON_POINT]->(bs0)
+        MERGE(t)-[:ENDS_ON_POINT]->(bs1)'
+
+  trips:
+    cypher_query:
+      'USING PERIODIC COMMIT 10000
+       LOAD CSV WITH HEADERS FROM "file:///trips.csv" AS row
+        MATCH (l:Line {line_code:row.line_code})-[:HAS_TRIP]->
+        (t:Trip)-[:STARTS_ON_POINT]->(bss:BusStop {number:row.start_point}),(t)-[:ENDS_ON_POINT]->(bse:BusStop {number:row.end_point})
+        MERGE(t)-[:HAS_SCHEDULE_AT]->(s:Schedule {start_time:row.start_time,end_time:row.end_time,time_table:row.time_table,vehicle:row.vehicle})'

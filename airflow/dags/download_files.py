@@ -18,11 +18,6 @@ import os
 
 config = yaml.load(open('./dags/config/data.yml'), Loader=yaml.FullLoader)
 
-NEO4J_URI = 'bolt://10.5.0.9:7687' #Variable.get('NEO4J_URI')
-NEO4J_USER = "neo4j" #Variable.get('NEO4J_USER')
-NEO4J_PASSWORD = "h4ck3r" #Variable.get('NEO4J_PASSWORD')
-
-
 def download_files(ds, folder, file, **kwargs):
     pprint("Date range: {}".format(date_range))
     pprint("Base URL: {}".format(base_url))
@@ -100,8 +95,6 @@ download_tasks = []
 decompress_tasks = []
 
 spark_load_to_pg = []
-spark_load_from_pg = []
-rename_files = []
 
 for t in config['etl_tasks']:
     download_tasks.append(PythonOperator(
@@ -124,10 +117,6 @@ for t in config['etl_tasks']:
                  '/simple-app/jars/postgresql-42.2.8.jar  /simple-app/load_to_postgresql.py -f {}' \
         .format(config['etl_tasks'][t]['folder'])
 
-    load_from_pg = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
-                   '/simple-app/jars/postgresql-42.2.8.jar  /simple-app/load_from_postgresql.py -f {}' \
-        .format(config['etl_tasks'][t]['folder'])
-
     spark_load_to_pg.append(DockerOperator(
         task_id='spark_etl_to_pg_{}'.format(t),
         image='altr/spark',
@@ -144,56 +133,33 @@ for t in config['etl_tasks']:
         network_mode='host', dag=dag
     ))
 
-    spark_load_from_pg.append(DockerOperator(
-        task_id='spark_etl_from_pg_{}'.format(t),
-        image='altr/spark',
-        api_version='auto',
-        auto_remove=True,
-        environment={
-            'PYSPARK_PYTHON': "python3",
-            'SPARK_HOME': "/spark"
-        },
-        volumes=['/home/altieris/master-thesis/airflow/simple-app:/simple-app'
-            , '/home/altieris/master-thesis/airflow/data:/data'],
-        command=load_from_pg,
-        docker_url='unix://var/run/docker.sock',
-        network_mode='host', dag=dag
-    ))
-
-    rename_files.append(BashOperator(
-        task_id='rename_file_{}'.format(t),
-        bash_command="mv /usr/local/airflow/data/processed/{file}/*.csv /usr/local/airflow/neo4j/import/{file}.csv".format(file=config['etl_tasks'][t]['folder']),
-        dag=dag,
-    ))
+#
+# def load_into_neo4j():
+#
+#     neo4j_driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+#     with neo4j_driver.session() as session:
+#         cypher_query = """
+#         LOAD CSV WITH HEADERS FROM "file:///linhas.csv" AS row
+#         CREATE (l:Line)
+#         set   l.line_code  = row.cod
+#          ,l.category   = row.categoria
+#          ,l.name       = row.nome
+#          ,l.color      = row.color
+#          ,l.card_only  = row.somente_cartao
+#         RETURN l
+#         """
+#         result = session.run(cypher_query)
+#         logging.info("Execution of backfill_blocks_into_neo4j: %s", result.summary().counters)
 
 
-def load_into_neo4j():
-
-    neo4j_driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-    with neo4j_driver.session() as session:
-        cypher_query = """
-        LOAD CSV WITH HEADERS FROM "file:///linhas.csv" AS row
-        CREATE (l:Line)
-        set   l.line_code  = row.cod
-         ,l.category   = row.categoria
-         ,l.name       = row.nome
-         ,l.color      = row.color
-         ,l.card_only  = row.somente_cartao
-        RETURN l
-        """
-        result = session.run(cypher_query)
-        logging.info("Execution of backfill_blocks_into_neo4j: %s", result.summary().counters)
-
-
-load_into_neo4j_task = PythonOperator(
-        task_id="load_into_neo4j",
-        python_callable=load_into_neo4j,
-        dag=dag
-    )
+# load_into_neo4j_task = PythonOperator(
+#         task_id="load_into_neo4j",
+#         python_callable=load_into_neo4j,
+#         dag=dag
+#     )
 
 
 for j in range(0, len(download_tasks)):
-    start >> download_tasks[j] >> decompress_tasks[j] >> spark_load_to_pg[j] >> spark_load_from_pg[j] >> rename_files[j]
+    start >> download_tasks[j] >> decompress_tasks[j] >> spark_load_to_pg[j]
 
-rename_files[len(download_tasks)-1] >> load_into_neo4j_task
 # https://itnext.io/how-to-create-a-simple-etl-job-locally-with-pyspark-postgresql-and-docker-ea53cd43311d
