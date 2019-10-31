@@ -157,3 +157,29 @@ neo4j_import:
         MATCH (l:Line {line_code:row.line_code})-[:HAS_TRIP]->
         (t:Trip)-[:STARTS_ON_POINT]->(bss:BusStop {number:row.start_point}),(t)-[:ENDS_ON_POINT]->(bse:BusStop {number:row.end_point})
         MERGE(t)-[:HAS_SCHEDULE_AT]->(s:Schedule {start_time:row.start_time,end_time:row.end_time,time_table:row.time_table,vehicle:row.vehicle})'
+
+
+#USING PERIODIC COMMIT 1000
+#LOAD CSV WITH HEADERS FROM "file:///stopevents.csv" AS row
+#with distinct row.vehicle  as vehicle
+#CREATE (v:Vehicle {vehicle:vehicle})
+#return count(v)
+
+#USING PERIODIC COMMIT 100000
+#LOAD CSV WITH HEADERS FROM "file:///stopevents.csv" AS row
+#CREATE (s:Stop {geometry : 'POINT(' + row.longitude +' '+ row.latitude +')', latitude:row.latitude, longitude:row.longitude,event_timestamp:row.stop_timestamp, event_time:row.event_time,line_code: row.cod_linha, vehicle:row.vehicle })
+#return count(s)
+
+#USING PERIODIC COMMIT 100000
+#LOAD CSV WITH HEADERS FROM "file:///trackingdata.csv" AS row
+#with row where toFloat(row.delta_time) <= 1200
+#MATCH (s0:Stop {event_timestamp:row.last_stop,vehicle:row.veic}),(s1:Stop {event_timestamp:row.current_stop,vehicle:row.veic})
+#MERGE (s0)-[m:MOVED_TO {delta_time: row.delta_time, delta_distance: row.delta_distance,delta_velocity:row.delta_velocity}]->(s1)
+#return count(m)
+
+
+#USING PERIODIC COMMIT 10000
+#LOAD CSV WITH HEADERS FROM "file:///event-stop-edges.csv" AS row
+#MATCH (s:Stop {line_code:row.line_code,latitude:row.latitude,longitude:row.longitude,vehicle:row.vehicle,event_time:row.event_time}),(bs:BusStop {number:row.bus_stop_number})
+#MERGE(s)-[e:EVENT_STOP {line_way:row.line_way}]->(bs)
+#return count(e)
