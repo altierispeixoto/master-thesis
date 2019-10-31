@@ -78,11 +78,96 @@ for neo in config['neo4j_import']:
         dag=dag
     ))
 
+
+
+pevents = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
+                   '/simple-app/jars/postgresql-42.2.8.jar  /simple-app/event-processing.py '
+
+event_processing = DockerOperator(
+        task_id='spark_etl_events',
+        image='altr/spark',
+        api_version='auto',
+        auto_remove=True,
+        environment={
+            'PYSPARK_PYTHON': "python3",
+            'SPARK_HOME': "/spark"
+        },
+        volumes=['/home/altieris/master-thesis/airflow/simple-app:/simple-app'
+            , '/home/altieris/master-thesis/airflow/data:/data'],
+        command=pevents,
+        docker_url='unix://var/run/docker.sock',
+        network_mode='host', dag=dag
+    )
+
+stopevents = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
+                   '/simple-app/jars/postgresql-42.2.8.jar  /simple-app/stop-events.py '
+
+stopevents_processing = DockerOperator(
+        task_id='spark_etl_stop_events',
+        image='altr/spark',
+        api_version='auto',
+        auto_remove=True,
+        environment={
+            'PYSPARK_PYTHON': "python3",
+            'SPARK_HOME': "/spark"
+        },
+        volumes=['/home/altieris/master-thesis/airflow/simple-app:/simple-app'
+            , '/home/altieris/master-thesis/airflow/data:/data'],
+        command=stopevents,
+        docker_url='unix://var/run/docker.sock',
+        network_mode='host', dag=dag
+    )
+
+
+tracking_data = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
+                   '/simple-app/jars/postgresql-42.2.8.jar  /simple-app/tracking-data.py '
+
+tracking_data_processing = DockerOperator(
+        task_id='spark_etl_tracking_data',
+        image='altr/spark',
+        api_version='auto',
+        auto_remove=True,
+        environment={
+            'PYSPARK_PYTHON': "python3",
+            'SPARK_HOME': "/spark"
+        },
+        volumes=['/home/altieris/master-thesis/airflow/simple-app:/simple-app'
+            , '/home/altieris/master-thesis/airflow/data:/data'],
+        command=tracking_data,
+        docker_url='unix://var/run/docker.sock',
+        network_mode='host', dag=dag
+    )
+
+
+event_stop_edges = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
+                   '/simple-app/jars/postgresql-42.2.8.jar  /simple-app/event-stop-edges.py '
+
+event_stop_edges_processing = DockerOperator(
+        task_id='spark_etl_event_stop_edges',
+        image='altr/spark',
+        api_version='auto',
+        auto_remove=True,
+        environment={
+            'PYSPARK_PYTHON': "python3",
+            'SPARK_HOME': "/spark"
+        },
+        volumes=['/home/altieris/master-thesis/airflow/simple-app:/simple-app'
+            , '/home/altieris/master-thesis/airflow/data:/data'],
+        command=event_stop_edges,
+        docker_url='unix://var/run/docker.sock',
+        network_mode='host', dag=dag
+    )
+
+
+
 for j in range(0, len(spark_load_from_pg)):
     start >> spark_load_from_pg[j] >> rename_files[j] >> dummy
 
-for i in range(0, len(load_into_neo4j_tasks)):
-    dummy >> load_into_neo4j_tasks[i]
+dummy >> load_into_neo4j_tasks[0]
+dummy >> event_processing >> stopevents_processing >> tracking_data_processing >> event_stop_edges_processing
+
+for i in range(0, len(load_into_neo4j_tasks)-1):
+    load_into_neo4j_tasks[i] >> load_into_neo4j_tasks[i+1]
 
 # start >> load_into_neo4j_task
 
