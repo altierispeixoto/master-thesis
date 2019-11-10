@@ -5,10 +5,8 @@ from pprint import pprint
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.operators.python_operator import PythonOperator
 from airflow.operators.docker_operator import DockerOperator
-from airflow.operators.bash_operator import BashOperator
 from airflow.models import Variable
 from datetime import date, timedelta, datetime
-from neo4j import GraphDatabase
 import ast
 import urllib3
 import glob
@@ -17,6 +15,7 @@ import yaml
 import os
 
 config = yaml.load(open('./dags/config/data.yml'), Loader=yaml.FullLoader)
+
 
 def download_files(ds, folder, file, **kwargs):
     pprint("Date range: {}".format(date_range))

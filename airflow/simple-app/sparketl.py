@@ -70,7 +70,7 @@ class ETLSpark:
         return df
 
     def save(self, src_data, target_path, coalesce=1, format="parquet"):
-        src_data.coalesce(coalesce).write.mode('overwrite').option("header", "true").format(format).save(target_path)
+        src_data.repartition(coalesce).write.mode('overwrite').option("header", "true").format(format).save(target_path)
         del src_data
         gc.collect()
 

@@ -14,7 +14,7 @@ with stops as (
           ,event_timestamp as last_stop
           ,lead(event_timestamp) over (partition by veic, moving_status order by event_timestamp asc )  as current_stop
      from events_processed
-     where moving_status = 'STOPPED' and cod_linha = '666'
+     --where moving_status = 'STOPPED' and cod_linha = '666'
 ),
 trips as (
     select sum( if(evp.delta_time is null, 0, evp.delta_distance)) as delta_distance
@@ -39,8 +39,8 @@ select cod_linha
       ,last_stop
       ,current_stop
 from trips
-where cod_linha = '666'
+--where cod_linha = '666'
 """
 
 target_path = "/data/processed/{}".format("trackingdata")
-etlspark.save(events_processed, target_path, coalesce=1, format="csv")
+etlspark.save(events_processed, target_path, coalesce=10, format="csv")

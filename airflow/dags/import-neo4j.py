@@ -1,5 +1,6 @@
 import logging
 from datetime import timedelta
+import time
 import airflow
 from airflow.models import DAG
 from airflow.operators.python_operator import PythonOperator
@@ -8,6 +9,8 @@ from airflow.operators.docker_operator import DockerOperator
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.operators.bash_operator import BashOperator
 import yaml
+import glob
+from pprint import pprint
 
 DEFAULT_ARGS = {
     'owner': 'airflow',
@@ -23,19 +26,44 @@ NEO4J_PASSWORD = "h4ck3r" #Variable.get('NEO4J_PASSWORD')
 config = yaml.load(open('./dags/config/data.yml'), Loader=yaml.FullLoader)
 
 
-def load_into_neo4j(ds, cypher_query, **kwargs):
-
+def load_into_neo4j(ds, cypher_query, file, **kwargs):
+    pprint(kwargs)
     neo4j_driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     with neo4j_driver.session() as session:
-        result = session.run(cypher_query)
-        logging.info("Execution: %s", result.summary().counters)
+        if file == 'trackingdata':
+            files = [f.split('/')[-1] for f in glob.glob("/usr/local/airflow/neo4j/import/trackingdata*", recursive=False) if f.endswith(".csv")]
+            for i in files:
+                print(i)
+                cypher_query_ex = cypher_query.replace('template', i)
+                print(cypher_query_ex)
+                print('--'*30)
+                result = session.run(cypher_query_ex)
+                logging.info("Execution: %s", result.summary().counters)
+                time.sleep(30)
+
+        elif file == 'event-stop-edges':
+            files = [f.split('/')[-1] for f in glob.glob("/usr/local/airflow/neo4j/import/event-stop-edges*", recursive=False) if f.endswith(".csv")]
+            for i in files:
+                cypher_query_ex = cypher_query.replace('template', i)
+                print(cypher_query_ex)
+                print('--'*30)
+                result = session.run(cypher_query_ex)
+                logging.info("Execution: %s", result.summary().counters)
+                time.sleep(30)
+        else:
+            print(cypher_query)
+            print('--' * 30)
+            result = session.run(cypher_query)
+            logging.info("Execution: %s", result.summary().counters)
 
 
 
 """Build DAG."""
 dag = DAG('import-neo4j', default_args=DEFAULT_ARGS, schedule_interval=None, catchup=False)
 start = DummyOperator(task_id='start', dag=dag)
-dummy = DummyOperator(task_id='wait', dag=dag)
+dummy0 = DummyOperator(task_id='wait0', dag=dag)
+dummy1 = DummyOperator(task_id='wait1', dag=dag)
+
 spark_load_from_pg = []
 rename_files = []
 load_into_neo4j_tasks = []
@@ -73,11 +101,10 @@ for neo in config['neo4j_import']:
     load_into_neo4j_tasks.append(PythonOperator(
         task_id="load_into_neo4j_{}".format(neo),
         provide_context=True,
-        op_kwargs=config['neo4j_import'][neo],
+        op_kwargs={'file': neo, 'cypher_query': config['neo4j_import'][neo]['cypher_query']},
         python_callable=load_into_neo4j,
         dag=dag
     ))
-
 
 
 pevents = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
@@ -159,16 +186,44 @@ event_stop_edges_processing = DockerOperator(
     )
 
 
+move_event_files = []
+
+move_event_files.append(BashOperator(
+    task_id='move_file_stopevents',
+    bash_command="cp /usr/local/airflow/data/processed/{file}/*.csv /usr/local/airflow/neo4j/import/{file}.csv".format(
+        file="stopevents"),
+    dag=dag,
+))
+
+cmd = 'ls -v /usr/local/airflow/data/processed/trackingdata/ | cat -n | while read n f; do mv -n "/usr/local/airflow/data/processed/trackingdata/$f" "/usr/local/airflow/neo4j/import/trackingdata$n.csv"; done'
+
+move_event_files.append(BashOperator(
+    task_id='move_file_trackingdata',
+    bash_command=cmd,
+    dag=dag,
+))
+
+cmd2 = 'ls -v /usr/local/airflow/data/processed/event-stop-edges/ | cat -n | while read n f; do mv -n "/usr/local/airflow/data/processed/event-stop-edges/$f" "/usr/local/airflow/neo4j/import/event-stop-edges$n.csv"; done'
+
+move_event_files.append(BashOperator(
+    task_id='move_file_event-stop-edges',
+    bash_command=cmd2,
+    dag=dag,
+))
+
+
+start >> event_processing >> stopevents_processing >> tracking_data_processing >> event_stop_edges_processing
+
+for i in range(0, len(move_event_files)):
+    event_stop_edges_processing >> move_event_files[i] >> dummy0
 
 for j in range(0, len(spark_load_from_pg)):
-    start >> spark_load_from_pg[j] >> rename_files[j] >> dummy
+    dummy0 >> spark_load_from_pg[j] >> rename_files[j] >> dummy1
 
-dummy >> load_into_neo4j_tasks[0]
-dummy >> event_processing >> stopevents_processing >> tracking_data_processing >> event_stop_edges_processing
+dummy1 >> load_into_neo4j_tasks[0]
 
 for i in range(0, len(load_into_neo4j_tasks)-1):
     load_into_neo4j_tasks[i] >> load_into_neo4j_tasks[i+1]
 
-# start >> load_into_neo4j_task
 
 #https://github.com/blockchain-etl/bitcoin-etl-airflow-neo4j/blob/master/dags/dag_btc_to_neo4j.py

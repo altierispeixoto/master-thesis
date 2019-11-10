@@ -57,8 +57,8 @@ line_way_events_stop as (
       from stop_events svt
       inner join query_1 tv on (svt.cod_linha = tv.line_code and svt.vehicle = tv.vehicle)
       inner join itinerary it on (svt.cod_linha = it.line_code and tv.start_point = it.start_point and tv.end_point = it.end_point)
-      where tv.line_code = '666'  and tv.vehicle = 'GN606'
-         and svt.event_time between tv.start_time and tv.end_time
+      where --tv.line_code = '666'  and tv.vehicle = 'GN606' and
+          svt.event_time between tv.start_time and tv.end_time
   )
   select line_code
         ,vehicle
@@ -78,7 +78,7 @@ line_way_events_stop as (
         ,pl.num    as bus_stop_number
   from line_way_events_stop lwep
      inner join pontos_linha  pl on (lwep.line_code = pl.cod and lwep.line_way = pl.sentido )
-     where line_code = '666'
+    -- where line_code = '666'
 """
 
 def haversine(lon1, lat1, lon2, lat2):
@@ -113,4 +113,4 @@ events =  etlspark.sqlContext.sql(query).withColumn("distance",
 evt = events.select(["line_code", "latitude", "longitude", "vehicle", "event_time", "line_way", "bus_stop_number"])
 
 target_path = "/data/processed/{}".format("event-stop-edges")
-etlspark.save(evt, target_path, coalesce=1, format="csv")
+etlspark.save(evt, target_path, coalesce=4, format="csv")
