@@ -21,109 +21,231 @@ etl_tasks:
     folder: "tabelaveiculo"
     file: "tabelaVeiculo.json.xz"
 
-#  tabela_shapelinha:
-#    folder: "shapelinha"
-#    file: "shapeLinha.json.xz"
-
   tabela_veiculos:
     folder: "veiculos"
     file: "veiculos.json.xz"
 
 etl_queries:
-  lines: (select cod, categoria_servico, nome, nome_cor, somente_cartao from linhas_stg) q1
-  busstops: (select distinct nome, num, tipo, lat, lon from pontoslinha_stg) q1
-  routes: "(
+  lines: "(
+          select distinct cod,
+              categoria_servico,
+              nome,
+              nome_cor,
+              somente_cartao,
+              to_char(datareferencia, 'YYYY') as year,
+              to_char(datareferencia,   'MM') as month,
+              to_char(datareferencia,   'DD') as day
+          from (
+              select l.cod,
+                  l.categoria_servico,
+                  l.nome,
+                  l.nome_cor,
+                  l.somente_cartao,
+                  to_date(dthr, 'DD/MM/YYYY HH24:MI:SS') as datareferencia
+              from veiculos_stg v
+                right join linhas_stg l on (v.cod_linha = l.cod)
+          ) t
+          order by cod,year,month,day
+  ) q1"
 
-          select distinct
-            cod_linha
-            ,sentido_linha
-            ,cast(seq_inicio as int) as seq_inicio
-            ,cast(seq_fim as int) as seq_fim
-            ,ponto_inicio
-            ,nome_ponto_inicio
-            ,ponto_final
-            ,nome_ponto_final
-            ,categoria_servico
-            ,nome_linha
-            ,nome_cor
-            ,somente_cartao
-        from (select 	 pseq.cod_linha
-                                          ,pseq.sentido_linha
-                                          ,pseq.seq_inicio
-                                          ,pseq.seq_fim
-                                          ,pseq.ponto_inicio
-                                          ,pseq.nome_ponto_inicio
-                                          ,pseq.ponto_final
-                                          ,pseq.nome_ponto_final
-                                          ,li.CATEGORIA_SERVICO as categoria_servico
-                                          ,li.NOME as nome_linha
-                                          ,li.NOME_COR as nome_cor
-                                          ,li.SOMENTE_CARTAO as somente_cartao
-                                          ,pseq.datareferencia
-                                          from (select
-                                          p1.COD as cod_linha
-                                          ,p1.SENTIDO  as sentido_linha
-                                          ,p1.SEQ      as seq_inicio
-                                          ,p2.SEQ      as seq_fim
-                                          ,p1.NUM      as ponto_inicio
-                                          ,p1.NOME     as nome_ponto_inicio
-                                          ,p2.NUM      as ponto_final
-                                          ,p2.NOME     as nome_ponto_final
-                                          ,p1.datareferencia
-                                          from pontoslinha_stg P1 inner join pontoslinha_stg p2 on (cast(p1.SEQ as int) +1 = cast(p2.SEQ as int) and p1.COD = p2.COD and p1.SENTIDO = p2.SENTIDO and p1.datareferencia = p2.datareferencia)
-                                          ) pseq
-                                          inner join linhas_stg li  on (pseq.cod_linha = li.COD and pseq.datareferencia = li.datareferencia)
-                                          order by pseq.cod_linha
-                                          ,pseq.sentido_linha
-                                          ,pseq.seq_inicio
-                                          ,pseq.seq_fim
-                                          ) as rota_sequenciada
-        order by  seq_inicio,seq_fim
+  busstops: "(with linhas as (
+                          select  distinct cod,
+                                  categoria_servico,
+                                  nome,
+                                  nome_cor,
+                                  somente_cartao,
+                                  to_char(datareferencia, 'YYYY') as year,
+                                  to_char(datareferencia,   'MM') as month,
+                                  to_char(datareferencia,   'DD') as day
+                          from (
+                              select l.cod,
+                                  l.categoria_servico,
+                                  l.nome,
+                                  l.nome_cor,
+                                  l.somente_cartao,
+                                  to_date(dthr, 'DD/MM/YYYY HH24:MI:SS') as datareferencia
+                              from veiculos_stg v
+                              right join linhas_stg l on (v.cod_linha = l.cod)
+                            ) as l
+                          )
+                          select distinct
+                                     bs.nome
+                                    ,bs.num
+                                    ,bs.tipo
+                                    ,bs.lat
+                                    ,bs.lon
+                                    ,l.year
+                                    ,l.month
+                                    ,l.day
+                          from     pontoslinha_stg	bs
+                          inner join linhas l on (bs.cod = l.cod)
     ) q1"
 
-  trip-endpoints: ( with start_end as
-                    (
-                        select  cod
-                        ,sentido
-                        ,min(cast(seq as int)) as start_trip
-                        ,max(cast(seq as int)) as end_trip
-                        from pontoslinha_stg
-                        group by cod,sentido
-                    )
-                    select ps.cod     as line_code
-                        ,ps.sentido
-                        ,ps.num     as origin
-                        ,ps.nome    as ponto_origem
-                        ,pe.num     as destination
-                        ,pe.nome    as ponto_destino
-                    from start_end  ss
-                      inner join pontoslinha_stg ps on (ps.cod = ss.cod  and ps.sentido = ss.sentido and cast(ps.seq as int) = ss.start_trip)
-                      inner join pontoslinha_stg pe on (pe.cod = ss.cod  and pe.sentido = ss.sentido and cast(pe.seq as  int) = ss.end_trip) ) q1
-
-  schedules: ( select cod_linha
-              ,cod_ponto
-              ,horario
-              ,nome_linha
-              ,tabela
-              ,veiculo
-              from tabelaveiculo_stg
-              order by cod_linha,horario
-          ) q1
-
-  trips: (with query_1
-          as (
-            select cod_linha     as line_code
-            ,cod_ponto     as start_point
-            ,horario       as start_time
-            ,tabela        as time_table
-            ,veiculo       as vehicle
-            ,lead(horario) over(partition by cod_linha,tabela,veiculo order by cod_linha, horario)   as end_time
-            ,lead(cod_ponto) over(partition by cod_linha,tabela,veiculo order by cod_linha, horario) as end_point
-            from tabelaveiculo_stg
-            order by cod_linha,horario
+  routes: "(
+          with linhas as (
+          	select  distinct cod,
+          	              to_char(datareferencia, 'YYYY') as year,
+          	              to_char(datareferencia,   'MM') as month,
+          	              to_char(datareferencia,   'DD') as day
+          	       from (
+          			select l.cod,
+          			       to_date(dthr, 'DD/MM/YYYY HH24:MI:SS') as datareferencia
+          			from veiculos_stg v
+          			right join linhas_stg l on (v.cod_linha = l.cod)
+          		) as l
+          	),
+          	rota_sequenciada as  (
+          		select 	  pseq.cod_linha
+          		         ,pseq.sentido_linha
+          		         ,pseq.seq_inicio
+          		         ,pseq.seq_fim
+          		         ,pseq.ponto_inicio
+          		         ,pseq.nome_ponto_inicio
+          		         ,pseq.ponto_final
+          		         ,pseq.nome_ponto_final
+          		         ,li.CATEGORIA_SERVICO as categoria_servico
+          		         ,li.NOME as nome_linha
+          		         ,li.NOME_COR as nome_cor
+          		         ,li.SOMENTE_CARTAO as somente_cartao
+          		         ,pseq.datareferencia
+          		         from (
+          		          		select
+          		                	  p1.COD as cod_linha
+          		                     ,p1.SENTIDO  as sentido_linha
+          		                     ,p1.SEQ      as seq_inicio
+          		                     ,p2.SEQ      as seq_fim
+          		                     ,p1.NUM      as ponto_inicio
+          		                     ,p1.NOME     as nome_ponto_inicio
+          		                     ,p2.NUM      as ponto_final
+          		                     ,p2.NOME     as nome_ponto_final
+          		                     ,p1.datareferencia
+          		                     	from pontoslinha_stg P1
+          		                     	inner join pontoslinha_stg p2 on (cast(p1.SEQ as int) +1 = cast(p2.SEQ as int) and p1.COD = p2.COD and p1.SENTIDO = p2.SENTIDO and p1.datareferencia = p2.datareferencia)
+          		               ) pseq
+          							inner join linhas_stg li  on (pseq.cod_linha = li.COD and pseq.datareferencia = li.datareferencia)
+          							 order by pseq.cod_linha
+          							,pseq.sentido_linha
+          							,pseq.seq_inicio
+          							,pseq.seq_fim
           )
-    select * from query_1   ) q1
+                   select distinct
+                       cod_linha
+                      ,sentido_linha
+                      ,cast(seq_inicio as int) as seq_inicio
+                      ,cast(seq_fim as int) as seq_fim
+                      ,ponto_inicio
+                      ,nome_ponto_inicio
+                      ,ponto_final
+                      ,nome_ponto_final
+                      ,categoria_servico
+                      ,nome_linha
+                      ,nome_cor
+                      ,somente_cartao
+                      ,l.year
+                      ,l.month
+                      ,l.day
+                  from  rota_sequenciada rt left join linhas l on (rt.cod_linha = l.cod)
+                  order by  seq_inicio,seq_fim
+    ) q1"
 
+  trip-endpoints: "(
+                    with linhas as (
+                                select  distinct cod,
+                                            to_char(datareferencia, 'YYYY') as year,
+                                            to_char(datareferencia,   'MM') as month,
+                                            to_char(datareferencia,   'DD') as day
+                                from (
+                                    select l.cod,
+                                    to_date(dthr, 'DD/MM/YYYY HH24:MI:SS') as datareferencia
+                                    from veiculos_stg v right join linhas_stg l on (v.cod_linha = l.cod)
+                                ) as l
+                          ),
+                        start_end as (
+                                select  bs.cod
+                                        ,bs.sentido
+                                        ,min(cast(bs.seq as int)) as start_trip
+                                        ,max(cast(bs.seq as int)) as end_trip
+                                        ,l.year
+                                        ,l.month
+                                        ,l.day
+                                from pontoslinha_stg bs left join linhas l  on (bs.cod = l.cod)
+                                group by bs.cod,bs.sentido,l.year,l.month,l.day
+                        )
+                        select ps.cod     as line_code
+                              ,ps.sentido
+                              ,ps.num     as origin
+                              ,ps.nome    as ponto_origem
+                              ,pe.num     as destination
+                              ,pe.nome    as ponto_destino
+                              ,ss.year
+                              ,ss.month
+                              ,ss.day
+                        from start_end  ss
+                        inner join pontoslinha_stg ps on (ps.cod = ss.cod  and ps.sentido = ss.sentido and cast(ps.seq as int) = ss.start_trip)
+                        inner join pontoslinha_stg pe on (pe.cod = ss.cod  and pe.sentido = ss.sentido and cast(pe.seq as  int) = ss.end_trip)
+      ) q1"
+
+  schedules: "( with linhas as (
+                          select  distinct cod,
+                                      to_char(datareferencia, 'YYYY') as year,
+                                      to_char(datareferencia,   'MM') as month,
+                                      to_char(datareferencia,   'DD') as day
+                                from (
+                                  select l.cod,
+                                  to_date(dthr, 'DD/MM/YYYY HH24:MI:SS') as datareferencia
+                                  from veiculos_stg v
+                                  right join linhas_stg l on (v.cod_linha = l.cod)
+                          ) as l
+                      )
+                      select t.cod_linha
+                            ,t.cod_ponto
+                            ,t.horario
+                            ,t.nome_linha
+                            ,t.tabela
+                            ,t.veiculo
+                            ,l.year
+                            ,l.month
+                            ,l.day
+                      from tabelaveiculo_stg t left join linhas l on (t.cod_linha = l.cod)
+                      order by cod_linha,horario
+          ) q1"
+
+  trips: "(
+        with linhas as (
+                  select  distinct cod,
+                      to_char(datareferencia, 'YYYY') as year,
+                      to_char(datareferencia,   'MM') as month,
+                      to_char(datareferencia,   'DD') as day
+                  from (
+                      select l.cod,
+                      to_date(dthr, 'DD/MM/YYYY HH24:MI:SS') as datareferencia
+                      from veiculos_stg v
+                      right join linhas_stg l on (v.cod_linha = l.cod)
+                    ) as l
+                 ),
+            trips as (
+                select cod_linha     as line_code
+                      ,cod_ponto     as start_point
+                      ,horario       as start_time
+                      ,tabela        as time_table
+                      ,veiculo       as vehicle
+                      ,lead(horario) over(partition by cod_linha,tabela,veiculo order by cod_linha, horario)   as end_time
+                      ,lead(cod_ponto) over(partition by cod_linha,tabela,veiculo order by cod_linha, horario) as end_point
+                from tabelaveiculo_stg
+                order by cod_linha,horario
+            )
+            select t.line_code
+                  ,t.start_point
+                  ,t.start_time
+                  ,t.time_table
+                  ,t.vehicle
+                  ,t.end_time
+                  ,t.end_point
+                  ,l.year
+                  ,l.month
+                  ,l.day
+            from trips t left join linhas l  on (t.line_code = l.cod)
+    ) q1"
 
 neo4j_import:
   lines:
