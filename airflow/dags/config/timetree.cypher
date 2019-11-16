@@ -27,7 +27,7 @@ FOREACH(year IN years |
                       ELSE range(1,30)
                     END) |
       CREATE (d:Day {value: day})
-      MERGE (m)-[:CONTAINS]->(d))))
+      MERGE (m)-[:CONTAINS]->(d))));
 
 
 //Connect Years Sequentially
