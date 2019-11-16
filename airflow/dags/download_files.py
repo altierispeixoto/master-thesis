@@ -132,31 +132,6 @@ for t in config['etl_tasks']:
         network_mode='host', dag=dag
     ))
 
-#
-# def load_into_neo4j():
-#
-#     neo4j_driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-#     with neo4j_driver.session() as session:
-#         cypher_query = """
-#         LOAD CSV WITH HEADERS FROM "file:///linhas.csv" AS row
-#         CREATE (l:Line)
-#         set   l.line_code  = row.cod
-#          ,l.category   = row.categoria
-#          ,l.name       = row.nome
-#          ,l.color      = row.color
-#          ,l.card_only  = row.somente_cartao
-#         RETURN l
-#         """
-#         result = session.run(cypher_query)
-#         logging.info("Execution of backfill_blocks_into_neo4j: %s", result.summary().counters)
-
-
-# load_into_neo4j_task = PythonOperator(
-#         task_id="load_into_neo4j",
-#         python_callable=load_into_neo4j,
-#         dag=dag
-#     )
-
 
 for j in range(0, len(download_tasks)):
     start >> download_tasks[j] >> decompress_tasks[j] >> spark_load_to_pg[j]
