@@ -106,26 +106,6 @@ for neo in config['neo4j_import']:
         dag=dag
     ))
 
-
-pevents = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
-                   '/simple-app/jars/postgresql-42.2.8.jar  /simple-app/event-processing.py '
-
-event_processing = DockerOperator(
-        task_id='spark_etl_events',
-        image='altr/spark',
-        api_version='auto',
-        auto_remove=True,
-        environment={
-            'PYSPARK_PYTHON': "python3",
-            'SPARK_HOME': "/spark"
-        },
-        volumes=['/home/altieris/master-thesis/airflow/simple-app:/simple-app'
-            , '/home/altieris/master-thesis/airflow/data:/data'],
-        command=pevents,
-        docker_url='unix://var/run/docker.sock',
-        network_mode='host', dag=dag
-    )
-
 stopevents = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
                    '/simple-app/jars/postgresql-42.2.8.jar  /simple-app/stop-events.py '
 
@@ -212,7 +192,7 @@ move_event_files.append(BashOperator(
 ))
 
 
-start >> event_processing >> stopevents_processing >> tracking_data_processing >> event_stop_edges_processing
+start >> stopevents_processing >> tracking_data_processing >> event_stop_edges_processing
 
 for i in range(0, len(move_event_files)):
     event_stop_edges_processing >> move_event_files[i] >> dummy0

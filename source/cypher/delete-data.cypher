@@ -1,9 +1,6 @@
 MATCH (n) DETACH DELETE n;
 
-MATCH ()-[r:IS_LOCATED]-() DELETE r
+MATCH ()-[r]-() DELETE r;
 
 CALL apoc.periodic.iterate("MATCH ()-[r:MOVES_TO]-() return r","with r  DELETE r", {batchSize:1000,iterateList:true, parallel:false})
-
-CALL spatial.addWKTLayer('layer_curitiba','geometry');
-
 CALL spatial.removeLayer("layer_curitiba");

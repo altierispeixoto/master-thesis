@@ -10,7 +10,7 @@ CREATE INDEX ON :Second(value);
 
 
 //Create Time Tree with Day Depth
-WITH range(2019, 2019) AS years, range(1,12) AS months
+WITH range(2019, 2020) AS years, range(1,12) AS months
 FOREACH(year IN years |
   CREATE (y:Year {value: year})
   FOREACH(month IN months |
