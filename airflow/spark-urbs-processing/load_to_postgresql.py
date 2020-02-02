@@ -74,19 +74,23 @@ def process_raw_events(position_events):
 etlspark = ETLSpark()
 
 parser = ArgumentParser()
-parser.add_argument("-f", "--file", dest="table",
+parser.add_argument("-f", "--file", dest="file",
                     help="write report to table", metavar="FILE")
 
-args = parser.parse_args()
-print(args.table)
+parser.add_argument("-t", "--table", dest="table",
+                    help="write report to table", metavar="FILE")
 
-source_path = "/data/raw/{}".format(args.table)
+
+args = parser.parse_args()
+print(args.file)
+
+source_path = args.file
 spark_df = etlspark.extract(source_path)
 
 if args.table == 'veiculos':
     events_processed = process_raw_events(spark_df)
     target_path = "/data/processed/{}".format("eventsprocessed")
-    etlspark.save(events_processed, target_path, coalesce=1)
+    #etlspark.save(events_processed, target_path, coalesce=1)
     etlspark.load_to_database(events_processed, args.table)
 else:
     etlspark.load_to_database(spark_df, args.table)

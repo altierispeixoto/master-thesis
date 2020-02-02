@@ -1,18 +1,17 @@
 from airflow.models import DAG
-import logging
 import airflow
 from pprint import pprint
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.operators.python_operator import PythonOperator
-from airflow.operators.docker_operator import DockerOperator
 from airflow.models import Variable
-from datetime import date, timedelta, datetime
+from datetime import timedelta, datetime
 import ast
 import urllib3
-import glob
 import lzma
 import yaml
 import os
+import shutil
+
 
 config = yaml.load(open('./dags/config/data.yml'), Loader=yaml.FullLoader)
 
@@ -31,16 +30,17 @@ def download_files(ds, folder, file, **kwargs):
     for i in range(delta.days + 1):
         day = sdate + timedelta(days=i)
         download_file_day = day.strftime("%Y_%m_%d")
+
+        base_date = day.replace(day=1).strftime("%Y-%m-%d")
+
         url = '{}{}_{}'.format(base_url, download_file_day, file)
         pprint("Downloading: {}".format(url))
 
-        base_folder = 'data/staging/{}'.format(folder)
-        try:
-            os.stat(base_folder)
-        except:
-            os.mkdir(base_folder)
+        base_folder = 'data/staging/{}/{}'.format(base_date, folder)
 
-        fd = 'data/staging/{}/{}_{}'.format(folder, download_file_day, file)
+        os.makedirs(base_folder, exist_ok=True)
+
+        fd = 'data/staging/{}/{}/{}_{}'.format(base_date, folder, download_file_day, file)
 
         http = urllib3.PoolManager()
         r = http.request('GET', url, preload_content=False)
@@ -57,19 +57,39 @@ def download_files(ds, folder, file, **kwargs):
 
 
 def decompress_files(ds, folder, file, **kwargs):
-    files = glob.glob("data/staging/{}/*.xz".format(folder))
 
-    base_folder = 'data/raw/{}'.format(folder)
-    try:
-        os.stat(base_folder)
-    except:
-        os.mkdir(base_folder)
+    pprint("Date range: {}".format(date_range))
+    pprint("Base URL: {}".format(base_url))
+    pprint("Filename: {}".format(file))
 
-    for file in files:
-        binary_data_buffer = lzma.open(file, mode='rt', encoding='utf-8').read()
-        f = file.replace('.xz', '').replace('staging', 'raw')
-        with open(f, 'w') as a:
+    fmt = "%Y-%m-%d"
+    sdate = datetime.strptime(date_range['date_start'], fmt)
+    edate = datetime.strptime(date_range['date_end'], fmt)
+
+    delta = edate - sdate
+
+    for i in range(delta.days + 1):
+        day = sdate + timedelta(days=i)
+        download_file_day = day.strftime("%Y_%m_%d")
+
+        base_date = day.replace(day=1).strftime("%Y-%m-%d")
+
+        base_folder = 'data/raw/{}/{}'.format(base_date, folder)
+
+        os.makedirs(base_folder, exist_ok=True)
+
+        fstaging = 'data/staging/{}/{}/{}_{}'.format(base_date, folder, download_file_day, file)
+        fraw = '{}/{}_{}'.format(base_folder, download_file_day, file.replace('.xz', ''))
+
+        binary_data_buffer = lzma.open(fstaging, mode='rt', encoding='utf-8').read()
+
+        with open(fraw, 'w') as a:
             a.write(binary_data_buffer)
+
+
+def delete_files(ds, folder, file, **kwargs):
+    base_folder = 'data/staging/{}'.format(folder)
+    shutil.rmtree(base_folder, ignore_errors=True)
 
 
 date_range = ast.literal_eval(Variable.get("date_range"))
@@ -89,11 +109,11 @@ args = {
 dag = DAG(dag_id='download_files', default_args=args, schedule_interval=None, catchup=False)
 
 start = DummyOperator(task_id='start', dag=dag)
+end = DummyOperator(task_id='end', dag=dag)
 
 download_tasks = []
 decompress_tasks = []
-
-spark_load_to_pg = []
+delete_staging_files = []
 
 for t in config['etl_tasks']:
     download_tasks.append(PythonOperator(
@@ -112,28 +132,15 @@ for t in config['etl_tasks']:
         dag=dag,
     ))
 
-    load_to_pg = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
-                 '/simple-app/jars/postgresql-42.2.8.jar  /simple-app/load_to_postgresql.py -f {}' \
-        .format(config['etl_tasks'][t]['folder'])
+    # delete_staging_files.append(PythonOperator(
+    #     task_id='delete_staging_files_{}'.format(t),
+    #     provide_context=True,
+    #     op_kwargs=config['etl_tasks'][t],
+    #     python_callable=delete_files,
+    #     dag=dag,
+    # ))
 
-    spark_load_to_pg.append(DockerOperator(
-        task_id='spark_etl_to_pg_{}'.format(t),
-        image='altr/spark',
-        api_version='auto',
-        auto_remove=True,
-        environment={
-            'PYSPARK_PYTHON': "python3",
-            'SPARK_HOME': "/spark"
-        },
-        volumes=['/home/altieris/master-thesis/airflow/simple-app:/simple-app'
-            , '/home/altieris/master-thesis/airflow/data:/data'],
-        command=load_to_pg,
-        docker_url='unix://var/run/docker.sock',
-        network_mode='host', dag=dag
-    ))
-
+##delete_staging_files
 
 for j in range(0, len(download_tasks)):
-    start >> download_tasks[j] >> decompress_tasks[j] >> spark_load_to_pg[j]
-
-# https://itnext.io/how-to-create-a-simple-etl-job-locally-with-pyspark-postgresql-and-docker-ea53cd43311d
+    start >> download_tasks[j] >> decompress_tasks[j] >> end

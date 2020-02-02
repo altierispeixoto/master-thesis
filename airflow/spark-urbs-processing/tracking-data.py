@@ -2,9 +2,21 @@ from sparketl import ETLSpark
 etlspark = ETLSpark()
 
 
-events_processed = etlspark.sqlContext.read.parquet('/data/processed/eventsprocessed/')
+#events_processed = etlspark.sqlContext.read.parquet('/data/processed/eventsprocessed/')
+
+
+query = """(
+            select cod_linha, veic, event_timestamp, delta_time , delta_distance, delta_velocity 
+            from veiculos v 
+                where  
+                   DATE(v.event_timestamp) = '2019-01-01' 
+            ) q1"""
+
+events_processed = etlspark.load_from_database(query = query)
 
 events_processed.registerTempTable("events_processed")
+
+
 
 query = """
 
@@ -14,7 +26,7 @@ with stops as (
           ,event_timestamp as last_stop
           ,lead(event_timestamp) over (partition by veic, moving_status order by event_timestamp asc )  as current_stop
      from events_processed
-     --where moving_status = 'STOPPED' and cod_linha = '666'
+     where moving_status = 'STOPPED' --and cod_linha = '666'
 ),
 trips as (
     select sum( if(evp.delta_time is null, 0, evp.delta_distance)) as delta_distance
@@ -43,4 +55,4 @@ from trips
 """
 
 target_path = "/data/processed/{}".format("trackingdata")
-etlspark.save(events_processed, target_path, coalesce=10, format="csv")
+etlspark.save(events_processed, target_path, coalesce=20, format="csv")

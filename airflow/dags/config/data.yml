@@ -26,7 +26,8 @@ etl_tasks:
     file: veiculos.json.xz
 
 etl_queries:
-  lines: "(
+  lines:
+      "(
           select distinct cod,
                         categoria_servico,
                         nome,
@@ -44,10 +45,11 @@ etl_queries:
                             v.year as year,
                             v.month as month,
                             v.day as day
-                        from veiculos_stg v
-                          right join linhas_stg l on (v.cod_linha = l.cod)
+                        from veiculos v
+                          right join linhas l on (v.cod_linha = l.cod)
+                          where l.datareferencia = '{datareferencia}' and DATE(v.event_timestamp) = '{datareferencia}'
                           ) t
-          order by cod,year,month,day
+          order by v.cod,v.year,v.month,v.day
   ) q1"
 
   busstops:

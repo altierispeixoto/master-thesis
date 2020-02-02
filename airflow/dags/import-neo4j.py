@@ -68,11 +68,16 @@ spark_load_from_pg = []
 rename_files = []
 load_into_neo4j_tasks = []
 
+
+
 for t in config['etl_queries']:
 
+    query = config['etl_queries'][t]
+
+    query  = query.format(datareferencia="2019-01-01")
     load_from_pg = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
-                   '/simple-app/jars/postgresql-42.2.8.jar  /simple-app/load_from_postgresql.py -q "{}" -f {}' \
-        .format(config['etl_queries'][t], t)
+                   '/spark-urbs-processing/jars/postgresql-42.2.8.jar  /spark-urbs-processing/load_from_postgresql.py -q "{}" -f {}' \
+        .format(query, t)
 
     spark_load_from_pg.append(DockerOperator(
         task_id='spark_etl_from_pg_{}'.format(t),
@@ -83,7 +88,7 @@ for t in config['etl_queries']:
             'PYSPARK_PYTHON': "python3",
             'SPARK_HOME': "/spark"
         },
-        volumes=['/home/altieris/master-thesis/airflow/simple-app:/simple-app'
+        volumes=['/home/altieris/master-thesis/airflow/spark-urbs-processing:/spark-urbs-processing'
             , '/home/altieris/master-thesis/airflow/data:/data'],
         command=load_from_pg,
         docker_url='unix://var/run/docker.sock',
@@ -106,8 +111,10 @@ for neo in config['neo4j_import']:
         dag=dag
     ))
 
+
+
 stopevents = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
-                   '/simple-app/jars/postgresql-42.2.8.jar  /simple-app/stop-events.py '
+                   '/spark-urbs-processing/jars/postgresql-42.2.8.jar  /spark-urbs-processing/stop-events.py '
 
 stopevents_processing = DockerOperator(
         task_id='spark_etl_stop_events',
@@ -118,7 +125,7 @@ stopevents_processing = DockerOperator(
             'PYSPARK_PYTHON': "python3",
             'SPARK_HOME': "/spark"
         },
-        volumes=['/home/altieris/master-thesis/airflow/simple-app:/simple-app'
+        volumes=['/home/altieris/master-thesis/airflow/spark-urbs-processing:/spark-urbs-processing'
             , '/home/altieris/master-thesis/airflow/data:/data'],
         command=stopevents,
         docker_url='unix://var/run/docker.sock',
@@ -127,7 +134,7 @@ stopevents_processing = DockerOperator(
 
 
 tracking_data = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
-                   '/simple-app/jars/postgresql-42.2.8.jar  /simple-app/tracking-data.py '
+                   '/spark-urbs-processing/jars/postgresql-42.2.8.jar  /spark-urbs-processing/tracking-data.py '
 
 tracking_data_processing = DockerOperator(
         task_id='spark_etl_tracking_data',
@@ -138,7 +145,7 @@ tracking_data_processing = DockerOperator(
             'PYSPARK_PYTHON': "python3",
             'SPARK_HOME': "/spark"
         },
-        volumes=['/home/altieris/master-thesis/airflow/simple-app:/simple-app'
+        volumes=['/home/altieris/master-thesis/airflow/spark-urbs-processing:/spark-urbs-processing'
             , '/home/altieris/master-thesis/airflow/data:/data'],
         command=tracking_data,
         docker_url='unix://var/run/docker.sock',
@@ -147,7 +154,7 @@ tracking_data_processing = DockerOperator(
 
 
 event_stop_edges = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
-                   '/simple-app/jars/postgresql-42.2.8.jar  /simple-app/event-stop-edges.py '
+                   '/spark-urbs-processing/jars/postgresql-42.2.8.jar  /spark-urbs-processing/event-stop-edges.py '
 
 event_stop_edges_processing = DockerOperator(
         task_id='spark_etl_event_stop_edges',
@@ -158,7 +165,7 @@ event_stop_edges_processing = DockerOperator(
             'PYSPARK_PYTHON': "python3",
             'SPARK_HOME': "/spark"
         },
-        volumes=['/home/altieris/master-thesis/airflow/simple-app:/simple-app'
+        volumes=['/home/altieris/master-thesis/airflow/spark-urbs-processing:/spark-urbs-processing'
             , '/home/altieris/master-thesis/airflow/data:/data'],
         command=event_stop_edges,
         docker_url='unix://var/run/docker.sock',
