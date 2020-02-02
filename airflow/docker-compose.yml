@@ -172,7 +172,7 @@ networks:
 #        environment:
 #            - INIT_DAEMON_STEP=setup_spark
 #        volumes:
-#            - ./simple-app:/simple-app
+#            - ./spark-urbs-processing:/spark-urbs-processing
 #            - ./data/raw:/data/raw
 #            - ./data/processed/:/data/processed
 #    spark-worker-1:
@@ -185,7 +185,7 @@ networks:
 #        environment:
 #            - "SPARK_MASTER=spark://spark-master:7077"
 #        volumes:
-#            - ./simple-app:/simple-app
+#            - ./spark-urbs-processing:/spark-urbs-processing
 #            - ./data/raw:/data/raw
 #            - ./data/processed/:/data/processed
 
@@ -198,7 +198,7 @@ networks:
 #        environment:
 #            - INIT_DAEMON_STEP=setup_spark
 #        volumes:
-#            - ./simple-app:/simple-app
+#            - ./spark-urbs-processing:/spark-urbs-processing
 #            - ./data/raw:/data/raw
 #            - ./data/processed/:/data/processed
 #    spark-worker-1:
@@ -211,6 +211,6 @@ networks:
 #        environment:
 #            - "SPARK_MASTER=spark://spark-master:7077"
 #        volumes:
-#            - ./simple-app:/simple-app
+#            - ./spark-urbs-processing:/spark-urbs-processing
 #            - ./data/raw:/data/raw
 #            - ./data/processed/:/data/processed

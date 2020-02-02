@@ -19,19 +19,24 @@ class ETLSpark:
     def __init__(self):
         self.conf = SparkConf().setAppName("App")
         self.conf = (self.conf.setMaster('local[*]')
-                     .set('spark.executor.memory', '4G')
-                     .set('spark.driver.memory', '3G')
-                     .set('spark.driver.maxResultSize', '5G'))
+                     .set('spark.executor.memory', '8G')
+                     .set('spark.driver.memory', '10G')
+                     .set('spark.driver.maxResultSize', '5G')
+                     .set('spark.sql.autoBroadcastJoinThreshold', '-1')
+                     )
+
+
 
         self.sc = SparkContext.getOrCreate(conf=self.conf)
         self.sqlContext = SQLContext(self.sc)
 
     def extract(self, src):
+        print("FILE: {}".format(input_file_name()))
         df = self.sqlContext.read.json(src).withColumn("filepath", input_file_name())
 
         split_col = functions.split(df['filepath'], '/')
 
-        df = df.withColumn('filename', split_col.getItem(6))
+        df = df.withColumn('filename', split_col.getItem(7))
 
         split = functions.split(df['filename'], '_')
 

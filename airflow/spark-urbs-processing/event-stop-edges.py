@@ -4,8 +4,8 @@ from sparketl import ETLSpark
 etlspark = ETLSpark()
 
 
-etlspark.load_from_database("pontoslinha_stg").registerTempTable("pontos_linha")
-etlspark.load_from_database("tabelaveiculo_stg").registerTempTable("tabela_veiculo")
+etlspark.load_from_database("(select * from pontoslinha_stg where datareferencia = '2019-01-01') q1 ").registerTempTable("pontos_linha")
+etlspark.load_from_database("(select * from tabelaveiculo_stg where datareferencia ='2019-01-01') q1").registerTempTable("tabela_veiculo")
 
 etlspark.sqlContext.read.csv("/data/processed/stopevents", header='true').registerTempTable("stop_events")
 

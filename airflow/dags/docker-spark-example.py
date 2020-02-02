@@ -27,9 +27,9 @@ with DAG('docker_dag_spark', default_args=default_args, schedule_interval=None, 
             'PYSPARK_PYTHON': "python3",
             'SPARK_HOME': "/spark"
         },
-        volumes=['/home/altieris/master-thesis/airflow/simple-app:/simple-app'
+        volumes=['/home/altieris/master-thesis/airflow/spark-urbs-processing:/spark-urbs-processing'
             , '/home/altieris/master-thesis/airflow/data:/data'],
-        command='/spark/bin/spark-submit --master local[*] /simple-app/load_to_postgresql.py',
+        command='/spark/bin/spark-submit --master local[*] /spark-urbs-processing/load_to_postgresql.py',
         docker_url='unix://var/run/docker.sock',
         network_mode='bridge'
     )
