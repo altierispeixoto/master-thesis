@@ -20,8 +20,8 @@ class ETLSpark:
         self.conf = SparkConf().setAppName("App")
         self.conf = (self.conf.setMaster('local[*]')
                      .set('spark.executor.memory', '8G')
-                     .set('spark.driver.memory', '10G')
-                     .set('spark.driver.maxResultSize', '5G')
+                     .set('spark.driver.memory', '20G')
+                     .set('spark.driver.maxResultSize', '10G')
                      .set('spark.sql.autoBroadcastJoinThreshold', '-1')
                      )
 
@@ -71,7 +71,7 @@ class ETLSpark:
 
         df = self.sqlContext.read.jdbc(url=db_url, table=query, properties=db_properties)
 
-        print(df.show(5))
+        #print(df.show(5))
         return df
 
     def save(self, src_data, target_path, coalesce=1, format="parquet"):

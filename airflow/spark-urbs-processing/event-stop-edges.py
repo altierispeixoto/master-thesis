@@ -1,13 +1,23 @@
 from pyspark.sql.functions import *
 from pyspark.sql.types import DoubleType, StringType
 from sparketl import ETLSpark
+from argparse import ArgumentParser
 etlspark = ETLSpark()
 
+parser = ArgumentParser()
+parser.add_argument("-d", "--date", dest="date",
+                    help="date", metavar="DATE")
 
-etlspark.load_from_database("(select * from pontoslinha_stg where datareferencia = '2019-01-01') q1 ").registerTempTable("pontos_linha")
-etlspark.load_from_database("(select * from tabelaveiculo_stg where datareferencia ='2019-01-01') q1").registerTempTable("tabela_veiculo")
 
-etlspark.sqlContext.read.csv("/data/processed/stopevents", header='true').registerTempTable("stop_events")
+args = parser.parse_args()
+datareferencia = args.date
+
+query_pontos_linha = "(select * from pontoslinha_stg where datareferencia = '{datareferencia}') q1 ".format(datareferencia = datareferencia)
+query_tabela_veiculo = "(select * from tabelaveiculo_stg where datareferencia ='{datareferencia}') q1".format(datareferencia = datareferencia)
+etlspark.load_from_database(query_pontos_linha).registerTempTable("pontos_linha")
+etlspark.load_from_database(query_tabela_veiculo).registerTempTable("tabela_veiculo")
+
+etlspark.sqlContext.read.csv("/data/processed/stopevents/{datareferencia}".format(datareferencia = datareferencia), header='true').registerTempTable("stop_events")
 
 query = """
 with
@@ -112,5 +122,5 @@ events =  etlspark.sqlContext.sql(query).withColumn("distance",
 
 evt = events.select(["line_code", "latitude", "longitude", "vehicle", "event_time", "line_way", "bus_stop_number"])
 
-target_path = "/data/processed/{}".format("event-stop-edges")
+target_path = "/data/processed/{folder}/{datareferencia}".format(folder="event-stop-edges",datareferencia=datareferencia)
 etlspark.save(evt, target_path, coalesce=4, format="csv")
