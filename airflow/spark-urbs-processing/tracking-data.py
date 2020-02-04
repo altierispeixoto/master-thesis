@@ -1,21 +1,25 @@
 from sparketl import ETLSpark
 etlspark = ETLSpark()
+from argparse import ArgumentParser
 
+parser = ArgumentParser()
+parser.add_argument("-d", "--date", dest="date",
+                    help="date", metavar="DATE")
 
-#events_processed = etlspark.sqlContext.read.parquet('/data/processed/eventsprocessed/')
+args = parser.parse_args()
+datareferencia = args.date
 
 
 query = """(
-            select cod_linha, veic, event_timestamp, delta_time , delta_distance, delta_velocity 
+            select cod_linha, veic, event_timestamp, delta_time , delta_distance, delta_velocity , moving_status
             from veiculos v 
                 where  
-                   DATE(v.event_timestamp) = '2019-01-01' 
-            ) q1"""
+                   DATE(v.event_timestamp) = '{datareferencia}' 
+            ) q1""".format(datareferencia = datareferencia)
 
 events_processed = etlspark.load_from_database(query = query)
 
 events_processed.registerTempTable("events_processed")
-
 
 
 query = """
@@ -54,5 +58,8 @@ from trips
 --where cod_linha = '666'
 """
 
-target_path = "/data/processed/{}".format("trackingdata")
-etlspark.save(events_processed, target_path, coalesce=20, format="csv")
+target_path = "/data/processed/{folder}/{datareferencia}".format(folder = "trackingdata",datareferencia = datareferencia)
+
+evt = etlspark.sqlContext.sql(query)
+
+etlspark.save(evt, target_path, coalesce=5, format="csv")

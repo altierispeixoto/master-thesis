@@ -71,8 +71,9 @@ etl_queries:
                                   v.year as year,
                                   v.month as month,
                                   v.day as day
-                              from veiculos_stg v
-                              right join linhas_stg l on (v.cod_linha = l.cod)
+                              from veiculos v
+                              right join linhas l on (v.cod_linha = l.cod)
+                              where l.datareferencia = '{datareferencia}' and DATE(v.event_timestamp) = '{datareferencia}'
                             ) as l
                           )
                           select distinct
@@ -84,7 +85,7 @@ etl_queries:
                                     ,l.year
                                     ,l.month
                                     ,l.day
-                          from     pontoslinha_stg	bs
+                          from     pontoslinha	bs
                           inner join linhas l on (bs.cod = l.cod)
     ) q1"
 
@@ -99,8 +100,9 @@ etl_queries:
           			       v.year as year,
                            v.month as month,
                            v.day as day
-          			from veiculos_stg v
-          			right join linhas_stg l on (v.cod_linha = l.cod)
+          			from veiculos v
+          			right join linhas l on (v.cod_linha = l.cod)
+          			where l.datareferencia = '{datareferencia}' and DATE(v.event_timestamp) = '{datareferencia}'
           		) as l
           	),
           	rota_sequenciada as  (
@@ -128,10 +130,11 @@ etl_queries:
           		                     ,p2.NUM      as ponto_final
           		                     ,p2.NOME     as nome_ponto_final
           		                     ,p1.datareferencia
-          		                     	from pontoslinha_stg P1
-          		                     	inner join pontoslinha_stg p2 on (cast(p1.SEQ as int) +1 = cast(p2.SEQ as int) and p1.COD = p2.COD and p1.SENTIDO = p2.SENTIDO and p1.datareferencia = p2.datareferencia)
+          		                     	from pontoslinha p1
+          		                     	inner join pontoslinha p2 on (cast(p1.SEQ as int) +1 = cast(p2.SEQ as int) and p1.COD = p2.COD and p1.SENTIDO = p2.SENTIDO and p1.datareferencia = p2.datareferencia)
+          		                     	where p1.datareferencia = '{datareferencia}' and p2.datareferencia = '{datareferencia}'
           		               ) pseq
-          							inner join linhas_stg li  on (pseq.cod_linha = li.COD and pseq.datareferencia = li.datareferencia)
+          							inner join linhas li  on (pseq.cod_linha = li.COD and pseq.datareferencia = li.datareferencia)
           							 order by pseq.cod_linha
           							,pseq.sentido_linha
           							,pseq.seq_inicio
@@ -168,7 +171,10 @@ etl_queries:
                                     v.year as year,
                                     v.month as month,
                                     v.day as day
-                                    from veiculos_stg v right join linhas_stg l on (v.cod_linha = l.cod)
+                                    l.datareferencia
+                                    from veiculos v
+                                        right join linhas l on (v.cod_linha = l.cod)
+                                    where l.datareferencia = '{datareferencia}' and and DATE(v.event_timestamp) = '{datareferencia}'
                                 ) as l
                           ),
                         start_end as (
@@ -179,7 +185,8 @@ etl_queries:
                                         ,l.year
                                         ,l.month
                                         ,l.day
-                                from pontoslinha_stg bs left join linhas l  on (bs.cod = l.cod)
+                                from pontoslinha bs
+                                   left join linhas l  on (bs.cod = l.cod and bs.datareferencia = l.datareferencia)
                                 group by bs.cod,bs.sentido,l.year,l.month,l.day
                         )
                         select ps.cod     as line_code
@@ -192,8 +199,9 @@ etl_queries:
                               ,ss.month
                               ,ss.day
                         from start_end  ss
-                        inner join pontoslinha_stg ps on (ps.cod = ss.cod  and ps.sentido = ss.sentido and cast(ps.seq as int) = ss.start_trip)
-                        inner join pontoslinha_stg pe on (pe.cod = ss.cod  and pe.sentido = ss.sentido and cast(pe.seq as  int) = ss.end_trip)
+                        inner join pontoslinha ps on (ps.cod = ss.cod  and ps.sentido = ss.sentido and cast(ps.seq as int) = ss.start_trip)
+                        inner join pontoslinha pe on (pe.cod = ss.cod  and pe.sentido = ss.sentido and cast(pe.seq as  int) = ss.end_trip)
+                        where ps.datareferencia = '{datareferencia}' and pe.datareferencia = '{datareferencia}'
       ) q1"
 
   schedules: "( with linhas as (
@@ -206,8 +214,9 @@ etl_queries:
                                          v.year as year,
                                          v.month as month,
                                          v.day as day
-                                  from veiculos_stg v
-                                  right join linhas_stg l on (v.cod_linha = l.cod)
+                                  from veiculos v
+                                  right join linhas l on (v.cod_linha = l.cod)
+                                  where l.datareferencia = '{datareferencia}' and and DATE(v.event_timestamp) = '{datareferencia}'
                           ) as l
                       )
                       select t.cod_linha
@@ -219,7 +228,9 @@ etl_queries:
                             ,l.year
                             ,l.month
                             ,l.day
-                      from tabelaveiculo_stg t left join linhas l on (t.cod_linha = l.cod)
+                      from tabelaveiculo t
+                          left join linhas l on (t.cod_linha = l.cod)
+                      where t.datareferencia = '{datareferencia}'
                       order by cod_linha,horario
           ) q1"
 
@@ -234,8 +245,9 @@ etl_queries:
                               v.year as year,
                               v.month as month,
                               v.day as day
-                      from veiculos_stg v
-                      right join linhas_stg l on (v.cod_linha = l.cod)
+                      from veiculos v
+                      right join linhas l on (v.cod_linha = l.cod)
+                      where l.datareferencia = '{datareferencia}' and and DATE(v.event_timestamp) = '{datareferencia}'
                     ) as l
                  ),
             trips as (
@@ -246,7 +258,8 @@ etl_queries:
                       ,veiculo       as vehicle
                       ,lead(horario) over(partition by cod_linha,tabela,veiculo order by cod_linha, horario)   as end_time
                       ,lead(cod_ponto) over(partition by cod_linha,tabela,veiculo order by cod_linha, horario) as end_point
-                from tabelaveiculo_stg
+                from tabelaveiculo
+                where datareferencia = '{datareferencia}'
                 order by cod_linha,horario
             )
             select t.line_code
@@ -367,7 +380,7 @@ neo4j_import:
       USING PERIODIC COMMIT 5000
       LOAD CSV WITH HEADERS FROM 'file:///template' AS row
       with row where toFloat(row.delta_time) <= 1200
-      MATCH (s0:Stop {event_timestamp:row.last_timestamp, vehicle:row.veic}),(s1:Stop {event_timestamp:row.event_timestamp,vehicle:row.veic})
+      MATCH (s0:Stop {event_timestamp:row.last_stop, vehicle:row.veic}),(s1:Stop {event_timestamp:row.current_stop,vehicle:row.veic})
       MERGE (s0)-[m:MOVED_TO {delta_time: row.delta_time, delta_distance: row.delta_distance, delta_velocity:row.delta_velocity}]->(s1)
       return count(m)
 
