@@ -4,7 +4,6 @@
 
 # spark-submit --driver-class-path . load_to_postgresql.py
 
-from pyspark.sql import DataFrameReader
 from pyspark.conf import SparkConf
 from pyspark.context import SparkContext
 from pyspark.sql import SQLContext
@@ -24,8 +23,6 @@ class ETLSpark:
                      .set('spark.driver.maxResultSize', '10G')
                      .set('spark.sql.autoBroadcastJoinThreshold', '-1')
                      )
-
-
 
         self.sc = SparkContext.getOrCreate(conf=self.conf)
         self.sqlContext = SQLContext(self.sc)

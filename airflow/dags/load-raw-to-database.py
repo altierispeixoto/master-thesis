@@ -25,7 +25,7 @@ args = {
     'retry_delay': timedelta(minutes=5)
 }
 
-dag = DAG(dag_id='process_raw', default_args=args, schedule_interval=None, catchup=False)
+dag = DAG(dag_id='load-raw-to-database', default_args=args, schedule_interval=None, catchup=False)
 
 start = DummyOperator(task_id='start', dag=dag)
 end = DummyOperator(task_id='end', dag=dag)
