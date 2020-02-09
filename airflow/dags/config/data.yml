@@ -49,7 +49,7 @@ etl_queries:
                           right join linhas l on (v.cod_linha = l.cod)
                           where l.datareferencia = '{datareferencia}' and DATE(v.event_timestamp) = '{datareferencia}'
                           ) t
-          order by v.cod,v.year,v.month,v.day
+          order by cod, year, month, day
   ) q1"
 
   busstops:
@@ -90,19 +90,19 @@ etl_queries:
     ) q1"
 
   routes: "(
-          with linhas as (
+          with vlinhas as (
           	select  distinct cod,
           	              year,
                           month,
                           day
           	       from (
-          			select l.cod,
-          			       v.year as year,
-                           v.month as month,
-                           v.day as day
-          			from veiculos v
-          			right join linhas l on (v.cod_linha = l.cod)
-          			where l.datareferencia = '{datareferencia}' and DATE(v.event_timestamp) = '{datareferencia}'
+                      select l.cod,
+                             v.year as year,
+                             v.month as month,
+                             v.day as day
+                      from veiculos v
+                      right join linhas l on (v.cod_linha = l.cod)
+                      where l.datareferencia = '{datareferencia}' and DATE(v.event_timestamp) = '{datareferencia}'
           		) as l
           	),
           	rota_sequenciada as  (
@@ -156,52 +156,54 @@ etl_queries:
                       ,l.year
                       ,l.month
                       ,l.day
-                  from  rota_sequenciada rt left join linhas l on (rt.cod_linha = l.cod)
+                  from  rota_sequenciada rt
+                      left join vlinhas l on (rt.cod_linha = l.cod)
                   order by  seq_inicio,seq_fim
     ) q1"
 
   trip-endpoints: "(
-                    with linhas as (
-                                select  distinct cod,
-                                            year,
-                                            month,
-                                            day
-                                from (
-                                    select l.cod,
-                                    v.year as year,
-                                    v.month as month,
-                                    v.day as day
-                                    l.datareferencia
-                                    from veiculos v
-                                        right join linhas l on (v.cod_linha = l.cod)
-                                    where l.datareferencia = '{datareferencia}' and and DATE(v.event_timestamp) = '{datareferencia}'
-                                ) as l
-                          ),
-                        start_end as (
-                                select  bs.cod
-                                        ,bs.sentido
-                                        ,min(cast(bs.seq as int)) as start_trip
-                                        ,max(cast(bs.seq as int)) as end_trip
-                                        ,l.year
-                                        ,l.month
-                                        ,l.day
-                                from pontoslinha bs
-                                   left join linhas l  on (bs.cod = l.cod and bs.datareferencia = l.datareferencia)
-                                group by bs.cod,bs.sentido,l.year,l.month,l.day
-                        )
-                        select ps.cod     as line_code
-                              ,ps.sentido
-                              ,ps.num     as origin
-                              ,ps.nome    as ponto_origem
-                              ,pe.num     as destination
-                              ,pe.nome    as ponto_destino
-                              ,ss.year
-                              ,ss.month
-                              ,ss.day
-                        from start_end  ss
-                        inner join pontoslinha ps on (ps.cod = ss.cod  and ps.sentido = ss.sentido and cast(ps.seq as int) = ss.start_trip)
-                        inner join pontoslinha pe on (pe.cod = ss.cod  and pe.sentido = ss.sentido and cast(pe.seq as  int) = ss.end_trip)
-                        where ps.datareferencia = '{datareferencia}' and pe.datareferencia = '{datareferencia}'
+                   with vlinhas as (
+                                                   select  distinct cod,
+                                                               year,
+                                                               month,
+                                                               day,
+                                                               datareferencia
+                                                   from (
+                                                       select l.cod,
+                   	                                    v.year as year,
+                   	                                    v.month as month,
+                   	                                    v.day as day,
+                   	                                    l.datareferencia
+                                                       from veiculos v
+                                                           right join linhas l on (v.cod_linha = l.cod)
+                                                       where l.datareferencia = '{datareferencia}' and DATE(v.event_timestamp) = '{datareferencia}'
+                                                   ) as l
+                                             ),
+                                           start_end as (
+                                                   select  bs.cod
+                                                           ,bs.sentido
+                                                           ,min(cast(bs.seq as int)) as start_trip
+                                                           ,max(cast(bs.seq as int)) as end_trip
+                                                           ,l.year
+                                                           ,l.month
+                                                           ,l.day
+                                                   from pontoslinha bs
+                                                      left join vlinhas l  on (bs.cod = l.cod and bs.datareferencia = l.datareferencia)
+                                                   group by bs.cod,bs.sentido,l.year,l.month,l.day
+                                           )
+                                           select ps.cod     as line_code
+                                                 ,ps.sentido
+                                                 ,ps.num     as origin
+                                                 ,ps.nome    as ponto_origem
+                                                 ,pe.num     as destination
+                                                 ,pe.nome    as ponto_destino
+                                                 ,ss.year
+                                                 ,ss.month
+                                                 ,ss.day
+                                           from start_end  ss
+                                           inner join pontoslinha ps on (ps.cod = ss.cod  and ps.sentido = ss.sentido and cast(ps.seq as int) = ss.start_trip)
+                                           inner join pontoslinha pe on (pe.cod = ss.cod  and pe.sentido = ss.sentido and cast(pe.seq as  int) = ss.end_trip)
+                                           where ps.datareferencia = '{datareferencia}' and pe.datareferencia = '{datareferencia}'
       ) q1"
 
   schedules: "( with linhas as (
@@ -216,7 +218,7 @@ etl_queries:
                                          v.day as day
                                   from veiculos v
                                   right join linhas l on (v.cod_linha = l.cod)
-                                  where l.datareferencia = '{datareferencia}' and and DATE(v.event_timestamp) = '{datareferencia}'
+                                  where l.datareferencia = '{datareferencia}' and DATE(v.event_timestamp) = '{datareferencia}'
                           ) as l
                       )
                       select t.cod_linha
@@ -247,7 +249,7 @@ etl_queries:
                               v.day as day
                       from veiculos v
                       right join linhas l on (v.cod_linha = l.cod)
-                      where l.datareferencia = '{datareferencia}' and and DATE(v.event_timestamp) = '{datareferencia}'
+                      where l.datareferencia = '{datareferencia}' and DATE(v.event_timestamp) = '{datareferencia}'
                     ) as l
                  ),
             trips as (
@@ -278,7 +280,7 @@ etl_queries:
 neo4j_import:
   lines:
     cypher_query: >
-       LOAD CSV WITH HEADERS FROM 'file:///lines.csv' AS row
+       LOAD CSV WITH HEADERS FROM 'file:///lines/{datareferencia}/lines.csv' AS row
        MERGE (l:Line {line_code: row.cod , name: row.nome})
        ON CREATE SET    l.line_code  = row.cod
                        ,l.category   = row.categoria_servico
@@ -289,7 +291,7 @@ neo4j_import:
 
   lines_timetree:
     cypher_query: >
-      LOAD CSV WITH HEADERS FROM 'file:///lines.csv' AS row
+      LOAD CSV WITH HEADERS FROM 'file:///lines/{datareferencia}/lines.csv' AS row
       with row where NOT toInteger(row.year) IS NULL
       merge (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:EXISTS_LINE]->(l:Line {line_code:row.cod,name:row.nome})
       return count(l)
@@ -297,7 +299,7 @@ neo4j_import:
   busstops:
     cypher_query: >
           USING PERIODIC COMMIT 10000
-          LOAD CSV WITH HEADERS FROM 'file:///busstops.csv' AS row
+          LOAD CSV WITH HEADERS FROM 'file:///busstops/{datareferencia}/busstops.csv' AS row
           MERGE (bs:BusStop {number: row.num, name: row.nome})
           ON CREATE SET  bs.name   = row.nome
                         ,bs.number    = row.num
@@ -311,7 +313,7 @@ neo4j_import:
 
   busstops_timetree:
     cypher_query: >
-        LOAD CSV WITH HEADERS FROM 'file:///busstops.csv' AS row
+        LOAD CSV WITH HEADERS FROM 'file:///busstops/{datareferencia}/busstops.csv' AS row
         with row where NOT toInteger(row.year) IS NULL
         merge (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:EXISTS_BUS_STOP]->(bs:BusStop {number: row.num, name:row.nome})
         return count(bs)
@@ -320,7 +322,7 @@ neo4j_import:
   routes:
     cypher_query: >
       USING PERIODIC COMMIT 10000
-      LOAD CSV WITH HEADERS FROM "file:///routes.csv" AS row
+      LOAD CSV WITH HEADERS FROM "file:///routes/{datareferencia}/routes.csv" AS row
       MATCH (bss: BusStop {number: row.ponto_inicio}), (bse: BusStop {number: row.ponto_final})
       MERGE (bss) -[:NEXT_STOP {
                          line_code: row.cod_linha
@@ -340,7 +342,7 @@ neo4j_import:
   trip_endpoints:
     cypher_query: >
       USING PERIODIC COMMIT 10000
-       LOAD CSV WITH HEADERS FROM "file:///trip-endpoints.csv" AS row
+       LOAD CSV WITH HEADERS FROM "file:///trip-endpoints/{datareferencia}/trip-endpoints.csv" AS row
         MATCH (l:Line {line_code:row.line_code}),(bs0:BusStop {number:row.origin}),(bs1:BusStop {number:row.destination})
         MERGE (l)-[:HAS_TRIP]->(t:Trip {line_way:row.sentido})
         MERGE (t)-[:STARTS_ON_POINT]->(bs0)
@@ -349,7 +351,7 @@ neo4j_import:
   vehicles:
     cypher_query: >
       USING PERIODIC COMMIT 10000
-      LOAD CSV WITH HEADERS FROM 'file:///stopevents.csv' AS row
+      LOAD CSV WITH HEADERS FROM 'file:///stopevents/{datareferencia}/stopevents.csv' AS row
       with row where NOT toInteger(row.year) IS NULL
       MERGE (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:EXISTS_VEHICLE]->(v:Vehicle {vehicle:row.vehicle})
       return count(v)
@@ -358,7 +360,7 @@ neo4j_import:
   schedules:
     cypher_query: >
        USING PERIODIC COMMIT 5000
-       LOAD CSV WITH HEADERS FROM "file:///trips.csv" AS row
+       LOAD CSV WITH HEADERS FROM "file:///trips/{datareferencia}/trips.csv" AS row
         MATCH (l:Line {line_code:row.line_code})-[:HAS_TRIP]->
               (t:Trip)-[:STARTS_ON_POINT]->(bss:BusStop {number:row.start_point}),
               (t)-[:ENDS_ON_POINT]->(bse:BusStop {number:row.end_point})
@@ -369,7 +371,7 @@ neo4j_import:
   stop_events:
     cypher_query: >
       USING PERIODIC COMMIT 5000
-      LOAD CSV WITH HEADERS FROM 'file:///stopevents.csv' AS row
+      LOAD CSV WITH HEADERS FROM 'file:///stopevents/{datareferencia}/stopevents.csv' AS row
       MERGE (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:CONTAINS]->(h:Hour {value: toInteger(row.hour)})-[:CONTAINS]->(mi:Minute {value: toInteger(row.minute)})-
       [:EXISTS_STOP]->(s:Stop {geometry : 'POINT(' + row.longitude +' '+ row.latitude +')', latitude:row.latitude, longitude:row.longitude,event_timestamp:row.stop_timestamp, event_time:row.event_time,line_code: row.cod_linha})
       -[:VEHICLE_HAS_STOPPED]->(v:Vehicle {vehicle:row.vehicle})
@@ -378,7 +380,7 @@ neo4j_import:
   trackingdata: #trackingdata.csv
     cypher_query: >
       USING PERIODIC COMMIT 5000
-      LOAD CSV WITH HEADERS FROM 'file:///template' AS row
+      LOAD CSV WITH HEADERS FROM 'file:///trackingdata/{datareferencia}/template' AS row
       with row where toFloat(row.delta_time) <= 1200
       MATCH (s0:Stop {event_timestamp:row.last_stop, vehicle:row.veic}),(s1:Stop {event_timestamp:row.current_stop,vehicle:row.veic})
       MERGE (s0)-[m:MOVED_TO {delta_time: row.delta_time, delta_distance: row.delta_distance, delta_velocity:row.delta_velocity}]->(s1)
@@ -387,7 +389,7 @@ neo4j_import:
   event-stop-edges: #event-stop-edges.csv
     cypher_query: >
       USING PERIODIC COMMIT 5000
-      LOAD CSV WITH HEADERS FROM "file:///template" AS row
+      LOAD CSV WITH HEADERS FROM "file:///event-stop-edges/{datareferencia}/template" AS row
       MATCH (s:Stop {line_code:row.line_code,latitude:row.latitude,longitude:row.longitude,vehicle:row.vehicle,event_time:row.event_time}),(bs:BusStop {number:row.bus_stop_number})
       MERGE(s)-[e:EVENT_STOP {line_way:row.line_way}]->(bs)
       return count(e)
