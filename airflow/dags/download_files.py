@@ -31,16 +31,16 @@ def download_files(ds, folder, file, **kwargs):
         day = sdate + timedelta(days=i)
         download_file_day = day.strftime("%Y_%m_%d")
 
-        base_date = day.replace(day=1).strftime("%Y-%m-%d")
+        datareferencia = day.replace(day=1).strftime("%Y-%m-%d")
 
         url = '{}{}_{}'.format(base_url, download_file_day, file)
         pprint("Downloading: {}".format(url))
 
-        base_folder = 'data/staging/{}/{}'.format(base_date, folder)
+        base_folder = 'data/staging/{datareferencia}/{folder}'.format(folder=folder, datareferencia=datareferencia)
 
         os.makedirs(base_folder, exist_ok=True)
 
-        fd = 'data/staging/{}/{}/{}_{}'.format(base_date, folder, download_file_day, file)
+        fd = 'data/staging/{datareferencia}/{folder}/{download_file_day}_{file}'.format(datareferencia = datareferencia,folder=folder, download_file_day = download_file_day, file = file)
 
         http = urllib3.PoolManager()
         r = http.request('GET', url, preload_content=False)
@@ -72,13 +72,13 @@ def decompress_files(ds, folder, file, **kwargs):
         day = sdate + timedelta(days=i)
         download_file_day = day.strftime("%Y_%m_%d")
 
-        base_date = day.replace(day=1).strftime("%Y-%m-%d")
+        datareferencia = day.replace(day=1).strftime("%Y-%m-%d")
 
-        base_folder = 'data/raw/{}/{}'.format(base_date, folder)
+        base_folder = 'data/raw/{datareferencia}/{folder}'.format(datareferencia = datareferencia, folder = folder)
 
         os.makedirs(base_folder, exist_ok=True)
 
-        fstaging = 'data/staging/{}/{}/{}_{}'.format(base_date, folder, download_file_day, file)
+        fstaging = 'data/staging/{datareferencia}/{folder}/{download_file_day}_{file}'.format(datareferencia=datareferencia, folder=folder, download_file_day=download_file_day,file=file)
         fraw = '{}/{}_{}'.format(base_folder, download_file_day, file.replace('.xz', ''))
 
         binary_data_buffer = lzma.open(fstaging, mode='rt', encoding='utf-8').read()

@@ -57,8 +57,7 @@ def load_into_neo4j(ds, cypher_query, file, datareferencia, **kwargs):
             files = [f.split('/')[-1] for f in glob.glob("/usr/local/airflow/neo4j/import/trackingdata/{datareferencia}/*".format(datareferencia=datareferencia), recursive=False) if f.endswith(".csv")]
             for i in files:
                 print(i)
-                cypher_query_ex = cypher_query.replace('template', i)
-                cypher_query_ex = cypher_query_ex.format(datareferencia=datareferencia)
+                cypher_query_ex = cypher_query.replace('template', i).replace('{datareferencia}',datareferencia)
                 print(cypher_query_ex)
                 print('--'*30)
                 result = session.run(cypher_query_ex)
@@ -68,15 +67,14 @@ def load_into_neo4j(ds, cypher_query, file, datareferencia, **kwargs):
         elif file == 'event-stop-edges':
             files = [f.split('/')[-1] for f in glob.glob("/usr/local/airflow/neo4j/import/event-stop-edges/{datareferencia}/*".format(datareferencia=datareferencia), recursive=False) if f.endswith(".csv")]
             for i in files:
-                cypher_query_ex = cypher_query.replace('template', i)
-                cypher_query_ex = cypher_query_ex.format(datareferencia=datareferencia)
+                cypher_query_ex = cypher_query.replace('template', i).replace('{datareferencia}',datareferencia)
                 print(cypher_query_ex)
                 print('--'*30)
                 result = session.run(cypher_query_ex)
                 logging.info("Execution: %s", result.summary().counters)
                 time.sleep(30)
         else:
-            cypher_query = cypher_query.format(datareferencia=datareferencia)
+            cypher_query = cypher_query.replace('{datareferencia}', datareferencia) 
             print(cypher_query)
             print('--' * 30)
             result = session.run(cypher_query)
@@ -130,16 +128,33 @@ for t in config['etl_queries']:
                     dag=dag,
                 ) >> end
 
+for i in range(delta.days + 1):
+    day = sdate + timedelta(days=i)
+    datareferencia = day.strftime("%Y-%m-%d")
 
-for neo in config['neo4j_import']:
-    for i in range(delta.days + 1):
-        day = sdate + timedelta(days=i)
-        datareferencia = day.strftime("%Y-%m-%d")
+    load_into_neo4j_tasks = []
+    for neo in config['neo4j_import']:
 
-        end >> PythonOperator(
+        load_into_neo4j_tasks.append(PythonOperator(
             task_id="load-into-neo4j-{folder}-{datareferencia}".format(folder=neo, datareferencia=datareferencia),
             provide_context=True,
             op_kwargs={'file': neo, 'cypher_query': config['neo4j_import'][neo]['cypher_query'],'datareferencia': datareferencia},
             python_callable=load_into_neo4j,
             dag=dag
-        )
+        ))
+    end >> load_into_neo4j_tasks[0]
+    for i in range(0, len(load_into_neo4j_tasks)-1):
+        load_into_neo4j_tasks[i] >> load_into_neo4j_tasks[i+1]
+
+# load_into_neo4j_tasks = []
+# for neo in config['neo4j_import']:
+#     load_into_neo4j_tasks.append(PythonOperator(
+#         task_id="load_into_neo4j_{}".format(neo),
+#         provide_context=True,
+#         op_kwargs={'file': neo, 'cypher_query': config['neo4j_import'][neo]['cypher_query']},
+#         python_callable=load_into_neo4j,
+#         dag=dag
+#     ))
+
+
+# for i in range(0, len(load_into_neo4j_tasks)-1):

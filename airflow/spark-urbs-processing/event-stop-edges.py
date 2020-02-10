@@ -12,8 +12,8 @@ parser.add_argument("-d", "--date", dest="date",
 args = parser.parse_args()
 datareferencia = args.date
 
-query_pontos_linha = "(select * from pontoslinha_stg where datareferencia = '{datareferencia}') q1 ".format(datareferencia = datareferencia)
-query_tabela_veiculo = "(select * from tabelaveiculo_stg where datareferencia ='{datareferencia}') q1".format(datareferencia = datareferencia)
+query_pontos_linha = "(select * from pontoslinha where datareferencia = '{datareferencia}') q1 ".format(datareferencia = datareferencia)
+query_tabela_veiculo = "(select * from tabelaveiculo where datareferencia ='{datareferencia}') q1".format(datareferencia = datareferencia)
 etlspark.load_from_database(query_pontos_linha).registerTempTable("pontos_linha")
 etlspark.load_from_database(query_tabela_veiculo).registerTempTable("tabela_veiculo")
 
