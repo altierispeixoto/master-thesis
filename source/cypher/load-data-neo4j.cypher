@@ -1,7 +1,7 @@
 CALL spatial.addWKTLayer('layer_curitiba','geometry')
 
 
--- LOAD SECTIONS
+// LOAD SECTIONS
 LOAD CSV WITH HEADERS FROM "file:///section.csv" AS row
 CREATE (s:Section)
     set   s.geometry     = row.WKT
@@ -11,7 +11,7 @@ CALL spatial.addNode('layer_curitiba',s) YIELD node
 RETURN node;
 
 
--- LOAD NEIGHBOURHOODS
+// LOAD NEIGHBOURHOODS
 LOAD CSV WITH HEADERS FROM "file:///neighbourhood.csv" AS row
 CREATE (n:Neighbourhood)
     set
@@ -23,7 +23,7 @@ CALL spatial.addNode('layer_curitiba',n) YIELD node
 RETURN node;
 
 
--- LOAD HEALTH STATIONS
+// LOAD HEALTH STATIONS
 LOAD CSV WITH HEADERS FROM "file:///unidades-saude.csv" AS row
 CREATE (p:Poi:HealthStation)
     set        p.category      = row.categoria
