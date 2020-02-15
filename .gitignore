@@ -103,8 +103,10 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-.idea/
 .vscode/
 /airflow/data/
 /airflow/db-data
 /airflow/neo4j
+
+docker-hive/namenode
+docker-hive/datanode
