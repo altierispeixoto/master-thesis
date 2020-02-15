@@ -107,3 +107,4 @@ venv.bak/
 .vscode/
 /airflow/data/
 /airflow/db-data
+/airflow/neo4j
