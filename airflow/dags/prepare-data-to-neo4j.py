@@ -42,8 +42,8 @@ def execute_spark_process(task_id,command, dag ):
             'PYSPARK_PYTHON': "python3",
             'SPARK_HOME': "/spark"
         },
-        volumes=['/home/altieris/master-thesis/airflow/spark-urbs-processing:/spark-urbs-processing'
-            , '/home/altieris/master-thesis/airflow/data:/data'],
+        volumes=['/mestrado/master-thesis/airflow/spark-urbs-processing:/spark-urbs-processing'
+            , '/mestrado/master-thesis/airflow/data:/data'],
         command=command,
         docker_url='unix://var/run/docker.sock',
         network_mode='host', dag=dag
@@ -60,10 +60,10 @@ def process_etl_queries(datareferencia, dag):
 
         query  = query.format(datareferencia=datareferencia)
         load_from_pg = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
-                       '/spark-urbs-processing/jars/postgresql-42.2.8.jar  /spark-urbs-processing/load_from_postgresql.py -q "{}" -f {} -d {}' \
+                       '/spark-urbs-processing/jars/presto-jdbc-0.221.jar  /spark-urbs-processing/load_from_prestodb.py -q "{}" -f {} -d {}' \
             .format(query, t, datareferencia)
 
-        tasks.append(execute_spark_process('spark_etl_from_pg_{}_{}'.format(t, datareferencia), load_from_pg, dag))
+        tasks.append(execute_spark_process('spark_etl_from_presto_{}_{}'.format(t, datareferencia), load_from_pg, dag))
     return tasks
 
 
@@ -72,14 +72,14 @@ for i in range(delta.days + 1):
     datareferencia = day.strftime("%Y-%m-%d")
 
     stopevents = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
-                   '/spark-urbs-processing/jars/postgresql-42.2.8.jar  /spark-urbs-processing/stop-events.py -d {}'.format(datareferencia)
+                   '/spark-urbs-processing/jars/presto-jdbc-0.221.jar  /spark-urbs-processing/stop-events.py -d {}'.format(datareferencia)
 
     tracking_data = '/spark/bin/spark-submit --master local[*] --executor-memory 10g --driver-memory 18g --conf spark.network.timeout=600s --driver-class-path ' \
-                    '/spark-urbs-processing/jars/postgresql-42.2.8.jar  /spark-urbs-processing/tracking-data.py -d {}'.format(
+                    '/spark-urbs-processing/jars/presto-jdbc-0.221.jar  /spark-urbs-processing/tracking-data.py -d {}'.format(
         datareferencia)
 
     event_stop_edges = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
-                       '/spark-urbs-processing/jars/postgresql-42.2.8.jar  /spark-urbs-processing/event-stop-edges.py -d {}'.format(
+                       '/spark-urbs-processing/jars/presto-jdbc-0.221.jar  /spark-urbs-processing/event-stop-edges.py -d {}'.format(
         datareferencia)
 
 

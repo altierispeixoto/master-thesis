@@ -3,6 +3,10 @@ create index on :BusStop (number);
 create index on :BusStop (latitude,longitude);
 create index on :Stop (line_code ,latitude ,longitude,vehicle,event_time);
 create index on :Stop (event_timestamp ,vehicle);
+create index on :Line(line_code);
+create index on :Trip(line_way);
+create index on :Vehicle(vehicle)
+create index on :Schedule (start_time, end_time, time_table);
 
 //https://www.graphgrid.com/modeling-time-series-data-with-neo4j/
 
@@ -78,3 +82,7 @@ MATCH (y)-[:CONTAINS]->(m:Month) WHERE m.value = 1 OR m.value = 12 WITH y, m
 MATCH (m)-[:CONTAINS]->(d)
 RETURN y, m, d;
 
+
+
+// WITH bs
+// CALL spatial.addNode('layer_curitiba',bs) YIELD node

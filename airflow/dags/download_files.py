@@ -78,13 +78,16 @@ def decompress_files(ds, folder, file, **kwargs):
 
         os.makedirs(base_folder, exist_ok=True)
 
-        fstaging = 'data/staging/{datareferencia}/{folder}/{download_file_day}_{file}'.format(datareferencia=datareferencia, folder=folder, download_file_day=download_file_day,file=file)
-        fraw = '{}/{}_{}'.format(base_folder, download_file_day, file.replace('.xz', ''))
+        try:
+            fstaging = 'data/staging/{datareferencia}/{folder}/{download_file_day}_{file}'.format(datareferencia=datareferencia, folder=folder, download_file_day=download_file_day,file=file)
+            fraw = '{}/{}_{}'.format(base_folder, download_file_day, file.replace('.xz', ''))
 
-        binary_data_buffer = lzma.open(fstaging, mode='rt', encoding='utf-8').read()
+            binary_data_buffer = lzma.open(fstaging, mode='rt', encoding='utf-8').read()
 
-        with open(fraw, 'w') as a:
-            a.write(binary_data_buffer)
+            with open(fraw, 'w') as a:
+                a.write(binary_data_buffer)
+        except Exception as err:
+            print("Can't open file: {} for date {}".format(file,download_file_day))
 
 
 def delete_files(ds, folder, file, **kwargs):

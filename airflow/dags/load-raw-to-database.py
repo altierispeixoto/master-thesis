@@ -66,8 +66,8 @@ for t in config['etl_tasks']:
                 'PYSPARK_PYTHON': "python3",
                 'SPARK_HOME': "/spark"
             },
-            volumes=['/home/altieris/master-thesis/airflow/spark-urbs-processing:/spark-urbs-processing'
-                , '/home/altieris/master-thesis/airflow/data:/data'],
+            volumes=['/mestrado/master-thesis/airflow/spark-urbs-processing:/spark-urbs-processing'
+                , '/mestrado/master-thesis/airflow/data:/data'],
             command=load_to_pg,
             docker_url='unix://var/run/docker.sock',
             network_mode='host', dag=dag
