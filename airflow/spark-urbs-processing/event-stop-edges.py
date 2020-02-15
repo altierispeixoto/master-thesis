@@ -12,16 +12,42 @@ parser.add_argument("-d", "--date", dest="date",
 args = parser.parse_args()
 datareferencia = args.date
 
-query_pontos_linha = "(select * from pontoslinha where datareferencia = '{datareferencia}') q1 ".format(datareferencia = datareferencia)
-query_tabela_veiculo = "(select * from tabelaveiculo where datareferencia ='{datareferencia}') q1".format(datareferencia = datareferencia)
-etlspark.load_from_database(query_pontos_linha).registerTempTable("pontos_linha")
-etlspark.load_from_database(query_tabela_veiculo).registerTempTable("tabela_veiculo")
-
-etlspark.sqlContext.read.csv("/data/processed/stopevents/{datareferencia}".format(datareferencia = datareferencia), header='true').registerTempTable("stop_events")
-
 query = """
-with
-query_1 as (
+( with
+  pontos_linha as (
+     select * 
+       from pontoslinha 
+       where  year = cast(extract( YEAR from date '{datareferencia}') as varchar)
+         and  month= cast(extract( MONTH from date '{datareferencia}') as varchar)
+         and  day = cast(extract( DAY from date '{datareferencia}')  as varchar)
+     ),
+  tabela_veiculo as (
+   select * 
+      from tabelaveiculo 
+      where  year = cast(extract( YEAR from date '{datareferencia}') as varchar)
+         and  month= cast(extract( MONTH from date '{datareferencia}') as varchar)
+         and  day = cast(extract( DAY from date '{datareferencia}')  as varchar)
+  ),  
+  stop_events as (
+   select v.cod_linha,
+          v.veic as vehicle,
+          v.event_timestamp as stop_timestamp,
+          v.year,
+          v.month,
+          v.day, 
+          v.hour,
+          v.minute,
+          v.second,
+          v.lat as latitude,
+          v.lon as longitude,
+            date_format(cast(event_timestamp as timestamp),'%T') as event_time
+            from veiculos v 
+            where v.moving_status = 'STOPPED' 
+              and year = cast(extract( YEAR from date '{datareferencia}') as varchar)
+              and month= cast(extract( MONTH from date '{datareferencia}') as varchar)
+              and day = cast(extract( DAY from date '{datareferencia}')  as varchar)
+  ),
+ query_1 as (
     select cod_linha     as line_code
           ,cod_ponto     as start_point
           ,horario       as start_time
@@ -35,8 +61,8 @@ query_1 as (
 start_end as (
     select  cod
            ,sentido
-           ,min(int(seq)) as start_trip
-           ,max(int(seq)) as end_trip
+           ,min(cast(seq as integer)) as start_trip
+           ,max(cast(seq as integer)) as end_trip
          from pontos_linha
     group by cod,sentido
 ),
@@ -48,8 +74,8 @@ itinerary as (
        ,pe.num     as end_point
        ,pe.nome    as destination
   from start_end  ss
-     inner join pontos_linha ps on (ps.cod = ss.cod  and ps.sentido = ss.sentido and ps.seq = ss.start_trip)
-     inner join pontos_linha pe on (pe.cod = ss.cod  and pe.sentido = ss.sentido and pe.seq = ss.end_trip)
+     inner join pontos_linha ps on (ps.cod = ss.cod  and ps.sentido = ss.sentido and cast(ps.seq as integer) = ss.start_trip)
+     inner join pontos_linha pe on (pe.cod = ss.cod  and pe.sentido = ss.sentido and cast(pe.seq as integer) = ss.end_trip)
 ),
 line_way_events_stop as (
     select svt.cod_linha as line_code
@@ -87,9 +113,9 @@ line_way_events_stop as (
         ,pl.nome   as bus_stop_name
         ,pl.num    as bus_stop_number
   from line_way_events_stop lwep
-     inner join pontos_linha  pl on (lwep.line_code = pl.cod and lwep.line_way = pl.sentido )
-    -- where line_code = '666'
-"""
+     inner join pontos_linha  pl on (lwep.line_code = pl.cod and lwep.line_way = pl.sentido ) ) q
+""".format(datareferencia=datareferencia)
+
 
 def haversine(lon1, lat1, lon2, lat2):
     import math
@@ -115,12 +141,14 @@ def haversine(lon1, lat1, lon2, lat2):
 apply_haversine = udf(lambda lon0, lat0, lon1, lat1, : haversine(lon0, lat0, lon1, lat1), DoubleType())
 
 
-events =  etlspark.sqlContext.sql(query).withColumn("distance",
+events = etlspark.load_from_presto(query = query)
+
+
+events = events.withColumn("distance",
             apply_haversine(col('longitude').cast('double'), col('latitude').cast('double'), col('busstop_longitude').cast('double'), col('busstop_latitude').cast('double'))) \
             .filter("distance < 60")
-            #.orderBy('event_time')
 
 evt = events.select(["line_code", "latitude", "longitude", "vehicle", "event_time", "line_way", "bus_stop_number"])
 
-target_path = "/data/processed/{folder}/{datareferencia}".format(folder="event-stop-edges",datareferencia=datareferencia)
+target_path = "/data/processed/neo4j/{folder}/{datareferencia}".format(folder="event-stop-edges",datareferencia=datareferencia)
 etlspark.save(evt, target_path, coalesce=4, format="csv")

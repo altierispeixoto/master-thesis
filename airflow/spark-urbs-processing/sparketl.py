@@ -22,6 +22,7 @@ class ETLSpark:
                      .set('spark.driver.memory', '20G')
                      .set('spark.driver.maxResultSize', '10G')
                      .set('spark.sql.autoBroadcastJoinThreshold', '-1')
+                     .set("spark.sql.sources.partitionOverwriteMode", "dynamic")
                      )
 
         self.sc = SparkContext.getOrCreate(conf=self.conf)
@@ -59,20 +60,36 @@ class ETLSpark:
         # Save the dataframe to the table.
         df.write.jdbc(url=db_url, table=tabletarget, mode='overwrite', properties=db_properties)
 
-    def load_from_database(self, query):
+    # def load_from_database(self, query):
+    #     db_properties = {}
+    #     db_url = "jdbc:postgresql://10.5.0.3:5432/dw?user=airflow&password=airflow"
+    #     db_properties['username'] = "airflow"
+    #     db_properties['password'] = "airflow"
+    #     db_properties['driver'] = "org.postgresql.Driver"
+
+    #     df = self.sqlContext.read.jdbc(url=db_url, table=query, properties=db_properties)
+
+    #     #print(df.show(5))
+    #     return df
+
+    def load_from_presto(self, query):
         db_properties = {}
-        db_url = "jdbc:postgresql://10.5.0.3:5432/dw?user=airflow&password=airflow"
-        db_properties['username'] = "airflow"
-        db_properties['password'] = "airflow"
-        db_properties['driver'] = "org.postgresql.Driver"
+        db_url = "jdbc:presto://localhost:8585/hive/default"
+        db_properties['user'] = "hive"
+        db_properties['password'] = ""
+        db_properties['driver'] = "com.facebook.presto.jdbc.PrestoDriver"
 
         df = self.sqlContext.read.jdbc(url=db_url, table=query, properties=db_properties)
 
-        #print(df.show(5))
         return df
 
     def save(self, src_data, target_path, coalesce=1, format="parquet"):
-        src_data.repartition(coalesce).write.mode('overwrite').option("header", "true").format(format).save(target_path)
+        src_data.repartition(coalesce).write.mode('overwrite').option("header","true").format(format).save(target_path)
+        del src_data
+        gc.collect()
+
+    def save_partitioned(self, src_data, target_path, coalesce=1, format="parquet"):
+        src_data.repartition(coalesce).write.partitionBy("year", "month", "day").mode('overwrite').option("header", "true").format(format).save(target_path)
         del src_data
         gc.collect()
 
