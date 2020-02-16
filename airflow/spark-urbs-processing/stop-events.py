@@ -29,5 +29,5 @@ evt = events_processed.select('cod_linha', col('veic').alias('vehicle'), col('ev
     .orderBy('vehicle','event_timestamp')
 
 
-target_path = "/data/processed/neo4j/{folder}/{datareferencia}".format(folder = "stopevents",datareferencia =  datareferencia)
+target_path = "/data/neo4j/{folder}/{datareferencia}".format(folder = "stopevents",datareferencia =  datareferencia)
 etlspark.save(evt, target_path, coalesce=1, format="csv")

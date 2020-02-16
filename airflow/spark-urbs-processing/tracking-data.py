@@ -56,7 +56,7 @@ from trips
 ) as q
 """.format(datareferencia=datareferencia)
 
-target_path = "/data/processed/neo4j/{folder}/{datareferencia}".format(folder = "trackingdata",datareferencia = datareferencia)
+target_path = "/data/neo4j/{folder}/{datareferencia}".format(folder = "trackingdata",datareferencia = datareferencia)
 
 evt = etlspark.load_from_presto(query = query)
 

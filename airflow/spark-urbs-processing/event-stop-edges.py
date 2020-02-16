@@ -150,5 +150,5 @@ events = events.withColumn("distance",
 
 evt = events.select(["line_code", "latitude", "longitude", "vehicle", "event_time", "line_way", "bus_stop_number"])
 
-target_path = "/data/processed/neo4j/{folder}/{datareferencia}".format(folder="event-stop-edges",datareferencia=datareferencia)
+target_path = "/data/neo4j/{folder}/{datareferencia}".format(folder="event-stop-edges",datareferencia=datareferencia)
 etlspark.save(evt, target_path, coalesce=4, format="csv")
