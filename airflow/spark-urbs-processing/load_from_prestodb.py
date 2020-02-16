@@ -19,7 +19,7 @@ query = args.query
 folder = args.folder
 datareferencia = args.datareferencia
 
-target_path = "/data/processed/neo4j/{}/{}/".format(folder,datareferencia)
+target_path = "/data/neo4j/{}/{}/".format(folder,datareferencia)
 
 df = etlspark.load_from_presto(query)
 etlspark.save(df, target_path, coalesce=1, format="csv")

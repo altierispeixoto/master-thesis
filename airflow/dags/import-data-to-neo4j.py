@@ -88,13 +88,13 @@ for t in config['etl_queries']:
 
         start >> BashOperator(
                 task_id='move-file-{folder}-{datareferencia}'.format(folder = t, datareferencia= datareferencia),
-                bash_command="mkdir -p /usr/local/airflow/neo4j/import/{file}/{datareferencia} &&  cp /usr/local/airflow/data/processed/{file}/{datareferencia}/*.csv /usr/local/airflow/neo4j/import/{file}/{datareferencia}/{file}.csv".format(
+                bash_command="mkdir -p /usr/local/airflow/neo4j/import/{file}/{datareferencia} &&  cp /usr/local/airflow/data/neo4j/{file}/{datareferencia}/*.csv /usr/local/airflow/neo4j/import/{file}/{datareferencia}/{file}.csv".format(
                     file=t, datareferencia=datareferencia),
                 dag=dag,
             ) >> end
 
         ####  stopevents
-        cmd = "mkdir -p /usr/local/airflow/neo4j/import/{file}/{datareferencia} && cp /usr/local/airflow/data/processed/{file}/{datareferencia}/*.csv /usr/local/airflow/neo4j/import/{file}/{datareferencia}/{file}.csv".format(file="stopevents",datareferencia=datareferencia)
+        cmd = "mkdir -p /usr/local/airflow/neo4j/import/{file}/{datareferencia} && cp /usr/local/airflow/data/neo4j/{file}/{datareferencia}/*.csv /usr/local/airflow/neo4j/import/{file}/{datareferencia}/{file}.csv".format(file="stopevents",datareferencia=datareferencia)
        
         start >> BashOperator(
                 task_id='move-file-{folder}-{datareferencia}'.format(folder="stopevents",datareferencia=datareferencia),
@@ -103,7 +103,7 @@ for t in config['etl_queries']:
             ) >> end           
 
         ### trakingdata
-        cmd = 'ls -v /usr/local/airflow/data/processed/{folder}/{datareferencia} | cat -n | while read n f; do mv -n "/usr/local/airflow/data/processed/{folder}/{datareferencia}/$f" "/usr/local/airflow/neo4j/import/{folder}/{datareferencia}/{folder}$n.csv"; done'.format(folder="trackingdata", datareferencia=datareferencia)
+        cmd = 'ls -v /usr/local/airflow/data/processed/{folder}/{datareferencia} | cat -n | while read n f; do mv -n "/usr/local/airflow/data/neo4j/{folder}/{datareferencia}/$f" "/usr/local/airflow/neo4j/import/{folder}/{datareferencia}/{folder}$n.csv"; done'.format(folder="trackingdata", datareferencia=datareferencia)
 
         start >> BashOperator(
                 task_id='create-folder-{folder}-{datareferencia}'.format(folder="trackingdata", datareferencia=datareferencia),
@@ -116,7 +116,7 @@ for t in config['etl_queries']:
                 ) >> end 
 
 
-        cmd = 'ls -v /usr/local/airflow/data/processed/{folder}/{datareferencia} | cat -n | while read n f; do mv -n "/usr/local/airflow/data/processed/{folder}/{datareferencia}/$f" "/usr/local/airflow/neo4j/import/{folder}/{datareferencia}/{folder}$n.csv"; done'.format(folder="event-stop-edges", datareferencia=datareferencia)
+        cmd = 'ls -v /usr/local/airflow/data/processed/{folder}/{datareferencia} | cat -n | while read n f; do mv -n "/usr/local/airflow/data/neo4j/{folder}/{datareferencia}/$f" "/usr/local/airflow/neo4j/import/{folder}/{datareferencia}/{folder}$n.csv"; done'.format(folder="event-stop-edges", datareferencia=datareferencia)
 
         start >> BashOperator(
                     task_id='create-folder-{folder}-{datareferencia}'.format(folder="event-stop-edges", datareferencia=datareferencia),

@@ -311,14 +311,12 @@ neo4j_import:
                        ,l.name       = row.nome
                        ,l.color      = row.nome_cor
                        ,l.card_only  = row.somente_cartao
-       return count(l)
 
   lines_timetree:
     cypher_query: >
       LOAD CSV WITH HEADERS FROM 'file:///lines/{datareferencia}/lines.csv' AS row
       with row where NOT toInteger(row.year) IS NULL
       merge (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:EXISTS_LINE]->(l:Line {line_code:row.cod,name:row.nome})
-      return count(l)
 
   busstops:
     cypher_query: >
@@ -331,19 +329,17 @@ neo4j_import:
                         ,bs.geometry  = 'POINT(' + row.lon +' '+ row.lat +')'
                         ,bs.latitude  = row.lat
                         ,bs.longitude = row.lon
-          RETURN count(bs);
 
   busstops_timetree:
     cypher_query: >
         LOAD CSV WITH HEADERS FROM 'file:///busstops/{datareferencia}/busstops.csv' AS row
         with row where NOT toInteger(row.year) IS NULL
         merge (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:EXISTS_BUS_STOP]->(bs:BusStop {number: row.num, name:row.nome})
-        return count(bs)
 
 
   routes:
     cypher_query: >
-      USING PERIODIC COMMIT 10000
+      USING PERIODIC COMMIT 21000
       LOAD CSV WITH HEADERS FROM "file:///routes/{datareferencia}/routes.csv" AS row
       MATCH (bss: BusStop {number: row.ponto_inicio}), (bse: BusStop {number: row.ponto_final})
       MERGE (bss) -[:NEXT_STOP {
