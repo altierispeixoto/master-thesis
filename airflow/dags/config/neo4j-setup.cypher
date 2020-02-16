@@ -11,6 +11,13 @@ create index on :Schedule (start_time, end_time, time_table);
 
 //https://www.graphgrid.com/modeling-time-series-data-with-neo4j/
 
+create constraint on (y:Year) ASSERT y.value IS UNIQUE;
+//create constraint on (m:Month) ASSERT m.value is unique;
+//create constraint on (d:Day) assert d.value is unique;
+//create constraint on (h:Hour) assert h.value is unique;
+//create constraint on (m:Minute) assert m.value is unique;
+//create constraint on (s:Second) assert s.value is unique;
+
 //Create Time Tree Indexes
 CREATE INDEX ON :Year(value);
 CREATE INDEX ON :Month(value);

@@ -314,27 +314,35 @@ neo4j_import:
 
   lines_timetree:
     cypher_query: >
-      LOAD CSV WITH HEADERS FROM 'file:///lines/{datareferencia}/lines.csv' AS row
-      with row where NOT toInteger(row.year) IS NULL
-      merge (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:EXISTS_LINE]->(l:Line {line_code:row.cod,name:row.nome})
+        LOAD CSV WITH HEADERS FROM 'file:///lines/{datareferencia}/lines.csv' AS row
+        with row where NOT toInteger(row.year) IS NULL
+        match (y:Year {value:toInteger(row.year)}) 
+        match (m:Month {value: toInteger(row.month)})
+        match (d:Day {value: toInteger(row.day)})
+        match (l:Line {line_code:row.cod,name:row.nome})
+        create unique (y)-[:CONTAINS]->(m)-[:CONTAINS]->(d)-[:EXISTS_LINE]->(l)
 
   busstops:
     cypher_query: >
-          USING PERIODIC COMMIT 10000
-          LOAD CSV WITH HEADERS FROM 'file:///busstops/{datareferencia}/busstops.csv' AS row
-          MERGE (bs:BusStop {number: row.num, name: row.nome})
-          ON CREATE SET  bs.name   = row.nome
-                        ,bs.number    = row.num
-                        ,bs.type      = row.tipo
-                        ,bs.geometry  = 'POINT(' + row.lon +' '+ row.lat +')'
-                        ,bs.latitude  = row.lat
-                        ,bs.longitude = row.lon
+        USING PERIODIC COMMIT 10000
+        LOAD CSV WITH HEADERS FROM 'file:///busstops/{datareferencia}/busstops.csv' AS row
+        MERGE (bs:BusStop {number: row.num, name: row.nome})
+        ON CREATE SET  bs.name   = row.nome
+                      ,bs.number    = row.num
+                      ,bs.type      = row.tipo
+                      ,bs.geometry  = 'POINT(' + row.lon +' '+ row.lat +')'
+                      ,bs.latitude  = row.lat
+                      ,bs.longitude = row.lon
 
   busstops_timetree:
     cypher_query: >
-        LOAD CSV WITH HEADERS FROM 'file:///busstops/{datareferencia}/busstops.csv' AS row
+        LOAD CSV WITH HEADERS FROM 'file:///busstops/2019-01-01/busstops.csv' AS row
         with row where NOT toInteger(row.year) IS NULL
-        merge (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:EXISTS_BUS_STOP]->(bs:BusStop {number: row.num, name:row.nome})
+        match (y:Year {value:toInteger(row.year)})
+        match (m:Month {value: toInteger(row.month)})
+        match (d:Day {value: toInteger(row.day)})
+        match (bs:BusStop {number: row.num, name:row.nome})
+        create (y)-[:CONTAINS]->(m)-[:CONTAINS]->(d)-[:EXISTS_BUS_STOP]->(bs)
 
 
   routes:
