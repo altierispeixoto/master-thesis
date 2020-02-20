@@ -19,7 +19,7 @@ create constraint on (y:Year) ASSERT y.value IS UNIQUE;
 //create constraint on (s:Second) assert s.value is unique;
 
 //Create Time Tree Indexes
-CREATE INDEX ON :Year(value);
+//CREATE INDEX ON :Year(value);
 CREATE INDEX ON :Month(value);
 CREATE INDEX ON :Day(value);
 CREATE INDEX ON :Hour(value);
