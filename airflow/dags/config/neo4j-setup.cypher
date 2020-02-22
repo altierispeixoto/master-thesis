@@ -1,17 +1,6 @@
 CALL spatial.addWKTLayer('layer_curitiba','geometry');
-
-create index on :BusStop (number);
-create index on :BusStop (latitude,longitude);
-create index on :Stop (line_code ,latitude ,longitude,vehicle,event_time);
-create index on :Stop (event_timestamp ,vehicle);
-create index on :Line(line_code);
-create index on :Trip(line_way);
-create index on :Vehicle(vehicle);
-create index on :Schedule (start_time, end_time, time_table);
-
 //https://www.graphgrid.com/modeling-time-series-data-with-neo4j/
 
-create constraint on (y:Year) ASSERT y.value IS UNIQUE;
 //create constraint on (m:Month) ASSERT m.value is unique;
 //create constraint on (d:Day) assert d.value is unique;
 //create constraint on (h:Hour) assert h.value is unique;
@@ -20,6 +9,20 @@ create constraint on (y:Year) ASSERT y.value IS UNIQUE;
 
 //Create Time Tree Indexes
 //CREATE INDEX ON :Year(value);
+
+create index on :BusStop (number);
+create index on :BusStop (latitude,longitude);
+create index on :Stop (line_code ,latitude ,longitude,vehicle,event_time);
+create index on :Stop (event_timestamp ,vehicle);
+create index on :Line(line_code);
+create index on :Trip(line_way);
+create index on :Schedule (start_time, end_time, time_table);
+
+
+
+create constraint on (y:Year) ASSERT y.value IS UNIQUE;
+create constraint on (v:Vehicle) ASSERT v.vehicle is UNIQUE;
+
 CREATE INDEX ON :Month(value);
 CREATE INDEX ON :Day(value);
 CREATE INDEX ON :Hour(value);
