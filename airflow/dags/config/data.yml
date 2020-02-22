@@ -437,41 +437,41 @@ neo4j_import:
         with distinct h, minute 
         merge (h)-[:CONTAINS]->(mi:Minute {value: toInteger(minute)})
 
-      USING PERIODIC COMMIT 20000
-      LOAD CSV WITH HEADERS FROM 'file:///stopevents/2019-01-01/stopevents.csv' AS row
-      create (s:Stop {geometry : 'POINT(' + row.longitude +' '+ row.latitude +')', latitude:row.latitude, longitude:row.longitude,event_timestamp:row.stop_timestamp, event_time:row.event_time,line_code: row.cod_linha})
+  stops:
+    cypher_query: >    
+        USING PERIODIC COMMIT 20000
+        LOAD CSV WITH HEADERS FROM 'file:///stopevents/2019-01-01/stopevents.csv' AS row
+        create (s:Stop {geometry : 'POINT(' + row.longitude +' '+ row.latitude +')', latitude:row.latitude, longitude:row.longitude,event_timestamp:row.stop_timestamp, event_time:row.event_time,line_code: row.cod_linha})
 
 
-  stop_events:
+  stops_timetree:
     cypher_query: >
-      USING PERIODIC COMMIT 5000
+      USING PERIODIC COMMIT 10000
       LOAD CSV WITH HEADERS FROM 'file:///stopevents/2019-01-01/stopevents.csv' AS row
-      match (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:CONTAINS]->(h:Hour {value: toInteger(row.hour)})-[:CONTAINS]->(mi:Minute {value: toInteger(row.minute)}), (s:Stop {geometry : 'POINT(' + row.longitude +' '+ row.latitude +')', latitude:row.latitude, longitude:row.longitude,event_timestamp:row.stop_timestamp, event_time:row.event_time,line_code: row.cod_linha})
+      match (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:CONTAINS]->(h:Hour {value: toInteger(row.hour)})-[:CONTAINS]->(mi:Minute {value: toInteger(row.minute)}), (s:Stop {latitude:row.latitude, longitude:row.longitude,event_timestamp:row.stop_timestamp, event_time:row.event_time,line_code: row.cod_linha})
       with distinct mi , s 
       create (mi)-[:EXISTS_STOP]->(s)
-      
-      
-      USING PERIODIC COMMIT 100000
-      LOAD CSV WITH HEADERS FROM 'file:///stopevents/{datareferencia}/stopevents.csv' AS row
-      match (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:CONTAINS]->(h:Hour {value: toInteger(row.hour)})-[:CONTAINS]->(mi:Minute {value: toInteger(row.minute)}), (s:Stop {geometry : 'POINT(' + row.longitude +' '+ row.latitude +')', latitude:row.latitude, longitude:row.longitude,event_timestamp:row.stop_timestamp, event_time:row.event_time,line_code: row.cod_linha}), (v:Vehicle {vehicle:row.vehicle})
-      with distinct mi , s 
-      merge (mi)-[:EXISTS_STOP]->(s)
-      
-
-      -[:VEHICLE_HAS_STOPPED]->(v)
+ 
+  vehicle_stops:
+    cypher_query: >
+      USING PERIODIC COMMIT 10000
+      LOAD CSV WITH HEADERS FROM 'file:///stopevents/2019-01-01/stopevents.csv' AS row
+      match (v:Vehicle {vehicle: row.vehicle}), (s:Stop {line_code: row.cod_linha,latitude:row.latitude, longitude:row.longitude, event_time:row.event_time})
+      with v, s
+      create (v)-[:VEHICLE_HAS_STOPPED]->(s)
 
   trackingdata: #trackingdata.csv
     cypher_query: >
-      USING PERIODIC COMMIT 100000
+      USING PERIODIC COMMIT 10000
       LOAD CSV WITH HEADERS FROM 'file:///trackingdata/{datareferencia}/template' AS row
       with row where toFloat(row.delta_time) <= 1200
-      MATCH (s0:Stop {event_timestamp:row.last_stop, vehicle:row.veic}),(s1:Stop {event_timestamp:row.current_stop,vehicle:row.veic})
-      create unique (s0)-[m:MOVED_TO {delta_time: row.delta_time, delta_distance: row.delta_distance, delta_velocity:row.delta_velocity}]->(s1)
+      MATCH (v:Vehicle {vehicle: row.veic})-[:VEHICLE_HAS_STOPPED]->(s0:Stop {line_code: row.cod_linha, event_timestamp:row.last_stop}), (v:Vehicle {vehicle: row.veic})-[:VEHICLE_HAS_STOPPED]->(s1:Stop {line_code: row.cod_linha, event_timestamp:row.current_stop})
+      merge (s0)-[m:MOVED_TO {delta_time: row.delta_time, delta_distance: row.delta_distance, delta_velocity:row.delta_velocity}]->(s1)
 
   event-stop-edges: #event-stop-edges.csv
     cypher_query: >
       USING PERIODIC COMMIT 100000
       LOAD CSV WITH HEADERS FROM "file:///event-stop-edges/{datareferencia}/template" AS row
-      MATCH (s:Stop {line_code:row.line_code,latitude:row.latitude,longitude:row.longitude,vehicle:row.vehicle,event_time:row.event_time}),(bs:BusStop {number:row.bus_stop_number})
+      MATCH (s:Stop {line_code:row.line_code,latitude:row.latitude,longitude:row.longitude,event_time:row.event_time}),(bs:BusStop {number:row.bus_stop_number})
       MERGE (s)-[e:EVENT_STOP {line_way:row.line_way}]->(bs)
 
