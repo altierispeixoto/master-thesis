@@ -1,3 +1,4 @@
+#https://github.com/blockchain-etl/bitcoin-etl-airflow-neo4j/blob/master/dags/dag_btc_to_neo4j.py
 import logging
 import time
 from airflow.models import DAG
@@ -13,8 +14,6 @@ from pprint import pprint
 import yaml
 import glob
 
-
-#https://github.com/blockchain-etl/bitcoin-etl-airflow-neo4j/blob/master/dags/dag_btc_to_neo4j.py
 
 NEO4J_URI = 'bolt://10.5.0.9:7687' #Variable.get('NEO4J_URI')
 NEO4J_USER = "neo4j" #Variable.get('NEO4J_USER')
@@ -53,32 +52,23 @@ def load_into_neo4j(ds, cypher_query, file, datareferencia, **kwargs):
     pprint(kwargs)
     neo4j_driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     with neo4j_driver.session() as session:
-        if file == 'trackingdata':
-            files = [f.split('/')[-1] for f in glob.glob("/usr/local/airflow/neo4j/import/trackingdata/{datareferencia}/*".format(datareferencia=datareferencia), recursive=False) if f.endswith(".csv")]
-            for i in files:
-                print(i)
-                cypher_query_ex = cypher_query.replace('template', i).replace('{datareferencia}',datareferencia)
-                print(cypher_query_ex)
-                print('--'*30)
-                result = session.run(cypher_query_ex)
-                logging.info("Execution: %s", result.summary().counters)
-                time.sleep(30)
+        
+        cypher_query = cypher_query.replace('{datareferencia}', datareferencia) 
+        print(cypher_query)
+        print('--' * 30)
+        result = session.run(cypher_query)
+        logging.info("Execution: %s", result.summary().counters)
 
-        elif file == 'event-stop-edges':
-            files = [f.split('/')[-1] for f in glob.glob("/usr/local/airflow/neo4j/import/event-stop-edges/{datareferencia}/*".format(datareferencia=datareferencia), recursive=False) if f.endswith(".csv")]
-            for i in files:
-                cypher_query_ex = cypher_query.replace('template', i).replace('{datareferencia}',datareferencia)
-                print(cypher_query_ex)
-                print('--'*30)
-                result = session.run(cypher_query_ex)
-                logging.info("Execution: %s", result.summary().counters)
-                time.sleep(30)
-        else:
-            cypher_query = cypher_query.replace('{datareferencia}', datareferencia) 
-            print(cypher_query)
-            print('--' * 30)
-            result = session.run(cypher_query)
-            logging.info("Execution: %s", result.summary().counters)
+
+def move_to_neo4j_folder(file, datareferencia,dag):
+    cmd = "mkdir -p /usr/local/airflow/neo4j/import/{file}/{datareferencia} &&  cp /usr/local/airflow/data/neo4j/{file}/{datareferencia}/*.csv /usr/local/airflow/neo4j/import/{file}/{datareferencia}/{file}.csv".format(
+                    file=file, datareferencia=datareferencia)
+
+    start >> BashOperator(
+                task_id='move-file-{folder}-{datareferencia}'.format(folder = file, datareferencia= datareferencia),
+                bash_command=cmd,
+                dag=dag,
+            ) >> end
 
 
 for t in config['etl_queries']:
@@ -86,47 +76,10 @@ for t in config['etl_queries']:
         day = sdate + timedelta(days=i)
         datareferencia = day.strftime("%Y-%m-%d")
 
-        start >> BashOperator(
-                task_id='move-file-{folder}-{datareferencia}'.format(folder = t, datareferencia= datareferencia),
-                bash_command="mkdir -p /usr/local/airflow/neo4j/import/{file}/{datareferencia} &&  cp /usr/local/airflow/data/neo4j/{file}/{datareferencia}/*.csv /usr/local/airflow/neo4j/import/{file}/{datareferencia}/{file}.csv".format(
-                    file=t, datareferencia=datareferencia),
-                dag=dag,
-            ) >> end
-
-        ####  stopevents
-        cmd = "mkdir -p /usr/local/airflow/neo4j/import/{file}/{datareferencia} && cp /usr/local/airflow/data/neo4j/{file}/{datareferencia}/*.csv /usr/local/airflow/neo4j/import/{file}/{datareferencia}/{file}.csv".format(file="stopevents",datareferencia=datareferencia)
-       
-        start >> BashOperator(
-                task_id='move-file-{folder}-{datareferencia}'.format(folder="stopevents",datareferencia=datareferencia),
-                bash_command=cmd,
-                dag=dag,
-            ) >> end           
-
-        ### trakingdata
-        cmd = 'ls -v /usr/local/airflow/data/processed/{folder}/{datareferencia} | cat -n | while read n f; do mv -n "/usr/local/airflow/data/neo4j/{folder}/{datareferencia}/$f" "/usr/local/airflow/neo4j/import/{folder}/{datareferencia}/{folder}$n.csv"; done'.format(folder="trackingdata", datareferencia=datareferencia)
-
-        start >> BashOperator(
-                task_id='create-folder-{folder}-{datareferencia}'.format(folder="trackingdata", datareferencia=datareferencia),
-                bash_command="mkdir -p /usr/local/airflow/neo4j/import/{folder}/{datareferencia}".format(folder="trackingdata", datareferencia=datareferencia),
-                dag=dag,
-                ) >> BashOperator(
-                    task_id='move-file-{folder}-{datareferencia}'.format(folder="trackingdata", datareferencia=datareferencia),
-                    bash_command=cmd,
-                    dag=dag,
-                ) >> end 
-
-
-        cmd = 'ls -v /usr/local/airflow/data/processed/{folder}/{datareferencia} | cat -n | while read n f; do mv -n "/usr/local/airflow/data/neo4j/{folder}/{datareferencia}/$f" "/usr/local/airflow/neo4j/import/{folder}/{datareferencia}/{folder}$n.csv"; done'.format(folder="event-stop-edges", datareferencia=datareferencia)
-
-        start >> BashOperator(
-                    task_id='create-folder-{folder}-{datareferencia}'.format(folder="event-stop-edges", datareferencia=datareferencia),
-                    bash_command="mkdir -p /usr/local/airflow/neo4j/import/{folder}/{datareferencia}".format(folder="event-stop-edges", datareferencia=datareferencia),
-                    dag=dag,
-                ) >> BashOperator(
-                    task_id='move-file-{folder}-{datareferencia}'.format(folder="event-stop-edges", datareferencia=datareferencia),
-                    bash_command=cmd,
-                    dag=dag,
-                ) >> end
+        move_to_neo4j_folder(t,datareferencia, dag)
+        move_to_neo4j_folder("stopevents", datareferencia, dag)
+        move_to_neo4j_folder("trackingdata", datareferencia, dag)
+        move_to_neo4j_folder("event-stop-edges", datareferencia, dag)
 
 for i in range(delta.days + 1):
     day = sdate + timedelta(days=i)
@@ -155,6 +108,3 @@ for i in range(delta.days + 1):
 #         python_callable=load_into_neo4j,
 #         dag=dag
 #     ))
-
-
-# for i in range(0, len(load_into_neo4j_tasks)-1):

@@ -74,7 +74,7 @@ for i in range(delta.days + 1):
     stopevents = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
                    '/spark-urbs-processing/jars/presto-jdbc-0.221.jar  /spark-urbs-processing/stop-events.py -d {}'.format(datareferencia)
 
-    tracking_data = '/spark/bin/spark-submit --master local[*] --executor-memory 10g --driver-memory 18g --conf spark.network.timeout=600s --driver-class-path ' \
+    tracking_data = '/spark/bin/spark-submit --master local[*] --executor-memory 6g --driver-memory 10g --conf spark.network.timeout=600s --driver-class-path ' \
                     '/spark-urbs-processing/jars/presto-jdbc-0.221.jar  /spark-urbs-processing/tracking-data.py -d {}'.format(
         datareferencia)
 
@@ -84,5 +84,6 @@ for i in range(delta.days + 1):
 
 
     start >> process_etl_queries(datareferencia, dag) >> end
-    start >> execute_spark_process('spark_etl_stop_events-{}'.format(datareferencia), stopevents, dag) >> execute_spark_process('spark_etl_event_stop_edges-{}'.format(datareferencia), event_stop_edges, dag) >> end
+    start >> execute_spark_process('spark_etl_stop_events-{}'.format(datareferencia), stopevents, dag)
+    start >> execute_spark_process('spark_etl_event_stop_edges-{}'.format(datareferencia), event_stop_edges, dag) >> end
     start >> execute_spark_process('spark_etl_tracking_data-{}'.format(datareferencia), tracking_data, dag) >> end

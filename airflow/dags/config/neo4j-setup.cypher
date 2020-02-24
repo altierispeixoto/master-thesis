@@ -15,6 +15,8 @@ create index on :BusStop (latitude,longitude);
 create index on :Stop (line_code ,latitude ,longitude,vehicle,event_time);
 create index on :Stop (line_code ,latitude ,longitude,event_time);
 
+create index on :Schedule (start_time, end_time, time_table);
+
 create index on :Stop (latitude, longitude,event_timestamp, event_time,line_code);
 
 create index on :Stop (line_code, event_timestamp);
