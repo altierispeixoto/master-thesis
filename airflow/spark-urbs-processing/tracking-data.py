@@ -60,4 +60,4 @@ target_path = "/data/neo4j/{folder}/{datareferencia}".format(folder = "trackingd
 
 evt = etlspark.load_from_presto(query = query)
 
-etlspark.save(evt, target_path, coalesce=5, format="csv")
+etlspark.save(evt, target_path, coalesce=1, format="csv")
