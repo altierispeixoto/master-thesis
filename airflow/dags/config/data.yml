@@ -362,6 +362,7 @@ neo4j_import:
           SET r.distance = distance(point({longitude: toFloat(p1.longitude),latitude: toFloat(p1.latitude) ,crs: 'wgs-84'})
           ,point({longitude: toFloat(p2.longitude),latitude: toFloat(p2.latitude) ,crs: 'wgs-84'}))
 
+
   trip_endpoints:
     cypher_query: >
       USING PERIODIC COMMIT 10000
@@ -389,14 +390,6 @@ neo4j_import:
       WITH d,v
       MERGE (d)-[:EXISTS_VEHICLE]->(v)
 
-  schedules:
-    cypher_query: >
-      USING PERIODIC COMMIT 10000
-      LOAD CSV WITH HEADERS FROM "file:///trips/{datareferencia}/trips.csv" AS row
-      with row where NOT toInteger(row.year) IS NULL and not row.vehicle = "" and not row.start_time ="" and not row.end_time = "" and not row.time_table =""
-      with distinct row.start_time as start_time, row.end_time as end_time, row.time_table as time_table 
-      MERGE (s:Schedule {start_time:start_time, end_time:end_time, time_table:time_table})
-
   trip_timetree:
     cypher_query: >
       LOAD CSV WITH HEADERS FROM "file:///trips/{datareferencia}/trips.csv" AS row
@@ -405,14 +398,49 @@ neo4j_import:
       with distinct d , t 
       MERGE (d)-[:EXISTS_TRIP]->(t)
 
-  vehicle_schedules:
+  schedules:
     cypher_query: >
-        USING PERIODIC COMMIT 20000
+      USING PERIODIC COMMIT 10000
+      LOAD CSV WITH HEADERS FROM "file:///trips/{datareferencia}/trips.csv" AS row
+      with row where NOT toInteger(row.year) IS NULL and not row.vehicle = "" and not row.start_time ="" and not row.end_time = "" and not row.time_table =""
+      with distinct row.start_time as start_time, row.end_time as end_time, row.time_table as time_table, row.line_code as line_code, row.start_point as start_point 
+      MERGE (s:Schedule {start_time:start_time, end_time:end_time, time_table:time_table, line_code:line_code, start_point: start_point})
+
+  schedules_timetree:
+    cypher_query: >
+      USING PERIODIC COMMIT 10000
+      LOAD CSV WITH HEADERS FROM "file:///trips/{datareferencia}/trips.csv" AS row
+      with row where NOT toInteger(row.year) IS NULL and not row.vehicle = "" and not row.start_time ="" and not row.end_time = "" and not row.time_table =""
+      MATCH (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)}), (s:Schedule {start_time:row.start_time, end_time:row.end_time, time_table:row.time_table, line_code:row.line_code, start_point: row.start_point})
+      MERGE (d)-[:EXISTS_SCHEDULE]->(s)
+  
+
+  trip_schedules:
+    cypher_query: >
+        USING PERIODIC COMMIT 5000
         LOAD CSV WITH HEADERS FROM "file:///trips/{datareferencia}/trips.csv" AS row
         with row where NOT toInteger(row.year) IS NULL and not row.vehicle = "" and not row.start_time ="" and not row.end_time = "" and not row.time_table =""
-        MATCH (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:EXISTS_TRIP]->(t), (s:Schedule {start_time:row.start_time, end_time:row.end_time, time_table:row.time_table})
-        with distinct t , s 
-        create (t)-[:HAS_SCHEDULE_AT]->(s)
+        match (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[r2:EXISTS_LINE]->(l:Line )-[:HAS_TRIP]->(t:Trip)-[:STARTS_ON_POINT]->(bs:BusStop) 
+        with distinct l, t, bs.number as start_point
+        match (s:Schedule {line_code:l.line_code, start_point:start_point}) 
+        with t, s
+        MERGE (t)-[:HAS_SCHEDULE_AT]->(s)
+
+  vehicle_schedules:
+    cypher_query: >
+      USING PERIODIC COMMIT 10000
+      LOAD CSV WITH HEADERS FROM "file:///trips/{datareferencia}/trips.csv" AS row
+      with row where NOT toInteger(row.year) IS NULL and not row.vehicle = "" and not row.start_time ="" and not row.end_time = "" and not row.time_table =""
+      MATCH (s:Schedule {start_time:row.start_time, end_time:row.end_time, time_table:row.time_table, line_code:row.line_code, start_point: row.start_point}), (v:Vehicle {vehicle: row.vehicle})
+      MERGE (v)-[:HAS_VEHICLE_SCHEDULE]->(s)
+
+  line_schedules:
+    cypher_query: >
+      USING PERIODIC COMMIT 10000
+      LOAD CSV WITH HEADERS FROM "file:///trips/{datareferencia}/trips.csv" AS row
+      with row where NOT toInteger(row.year) IS NULL and not row.vehicle = "" and not row.start_time ="" and not row.end_time = "" and not row.time_table =""
+      MATCH (s:Schedule {start_time:row.start_time, end_time:row.end_time, time_table:row.time_table, line_code:row.line_code, start_point: row.start_point}), (l:Line {line_code:row.line_code})
+      MERGE (l)-[:HAS_LINE_SCHEDULE]->(s)
 
   hour_timetree:
     cypher_query: >
@@ -441,7 +469,7 @@ neo4j_import:
 
   stops_timetree:
     cypher_query: >
-      USING PERIODIC COMMIT 10000
+      USING PERIODIC COMMIT 20000
       LOAD CSV WITH HEADERS FROM 'file:///stopevents/{datareferencia}/stopevents.csv' AS row
       match (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:CONTAINS]->(h:Hour {value: toInteger(row.hour)})-[:CONTAINS]->(mi:Minute {value: toInteger(row.minute)}), (s:Stop {latitude:row.latitude, longitude:row.longitude,event_timestamp:row.stop_timestamp, event_time:row.event_time,line_code: row.cod_linha})
       with distinct mi , s 
@@ -449,7 +477,7 @@ neo4j_import:
  
   vehicle_stops:
     cypher_query: >
-      USING PERIODIC COMMIT 10000
+      USING PERIODIC COMMIT 20000
       LOAD CSV WITH HEADERS FROM 'file:///stopevents/{datareferencia}/stopevents.csv' AS row
       match (v:Vehicle {vehicle: row.vehicle}), (s:Stop {line_code: row.cod_linha,latitude:row.latitude, longitude:row.longitude, event_time:row.event_time})
       with v, s
@@ -457,7 +485,7 @@ neo4j_import:
 
   trackingdata: #trackingdata.csv
     cypher_query: >
-      USING PERIODIC COMMIT 10000
+      USING PERIODIC COMMIT 20000
       LOAD CSV WITH HEADERS FROM 'file:///trackingdata/{datareferencia}/trackingdata.csv' AS row
       with row where toFloat(row.delta_time) <= 1200
       MATCH (v:Vehicle {vehicle: row.veic})-[:VEHICLE_HAS_STOPPED]->(s0:Stop {line_code: row.cod_linha, event_timestamp:row.last_stop}), (v:Vehicle {vehicle: row.veic})-[:VEHICLE_HAS_STOPPED]->(s1:Stop {line_code: row.cod_linha, event_timestamp:row.current_stop})
@@ -465,7 +493,7 @@ neo4j_import:
 
   event-stop-edges: #event-stop-edges.csv
     cypher_query: >
-      USING PERIODIC COMMIT 100000
+      USING PERIODIC COMMIT 20000
       LOAD CSV WITH HEADERS FROM "file:///event-stop-edges/{datareferencia}/event-stop-edges.csv" AS row
       MATCH (s:Stop {line_code:row.line_code,latitude:row.latitude,longitude:row.longitude,event_time:row.event_time}),(bs:BusStop {number:row.bus_stop_number})
       MERGE (s)-[e:EVENT_STOP {line_way:row.line_way}]->(bs)
