@@ -15,7 +15,7 @@ query = """
 (
 with 
 events_processed as (
-	 select cod_linha, veic, event_timestamp, delta_time , delta_distance, delta_velocity , moving_status
+	 select cod_linha, veic, event_timestamp, delta_time , delta_distance, delta_velocity , moving_status, v.year, v.month, v.day
    		from veiculos v 
      	where v.year = cast(extract( YEAR from date '{datareferencia}') as varchar)
        		and v.month= cast(extract( MONTH from date '{datareferencia}') as varchar)
@@ -37,12 +37,15 @@ trips as (
           ,evp.cod_linha
           ,st.last_stop
           ,st.current_stop
+          ,evp.year
+          ,evp.month
+          ,evp.day
      from events_processed evp, stops st
      where
             (evp.event_timestamp between st.last_stop and st.current_stop)
             and (evp.veic = st.veic)
             and (evp.cod_linha = st.cod_linha)
-    group by evp.cod_linha,evp.veic, st.last_stop, st.current_stop
+    group by evp.cod_linha,evp.veic, st.last_stop, st.current_stop,evp.year,evp.month,evp.day
     order by evp.cod_linha,evp.veic, st.last_stop, st.current_stop
 )
 select cod_linha
@@ -52,6 +55,9 @@ select cod_linha
       ,delta_velocity
       ,last_stop
       ,current_stop
+      ,year
+      ,month
+      ,day
 from trips
 ) as q
 """.format(datareferencia=datareferencia)
