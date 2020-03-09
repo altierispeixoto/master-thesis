@@ -22,7 +22,7 @@ create index on :Schedule (line_code, start_point);
 
 create index on :Stop (latitude, longitude,event_timestamp, event_time,line_code);
 
-create index on :Stop (line_code, event_timestamp);
+create index on :Stop (line_code,vehicle, event_timestamp);
 
 create index on :Line(line_code);
 create index on :Trip(line_way);
@@ -60,6 +60,22 @@ FOREACH(year IN years |
       CREATE (d:Day {value: day})
       MERGE (m)-[:CONTAINS]->(d))));
 
+//Create Time Tree with Hour Depth
+match(y:Year)-[:CONTAINS]->(m:Month)-[:CONTAINS]->(d:Day)
+WITH collect(d) AS days
+  FOREACH(d IN days  |
+     FOREACH (hour in range(0,23) |
+       CREATE (h:Hour {value: hour})
+       MERGE (d)-[:CONTAINS]->(h)));
+
+//Create Time Tree with Minute Depth
+// match(y:Year)-[:CONTAINS]->(m:Month)-[:CONTAINS]->(d:Day)-[:CONTAINS]->(h:Hour)
+// WITH collect(h) AS hours
+//   FOREACH(h IN hours  |
+//      FOREACH (minute in range(1,60) |
+//        CREATE (mi:Minute {value: minute})
+//        MERGE (h)-[:CONTAINS]->(mi)));
+
 
 //Connect Years Sequentially
 MATCH (year:Year)
@@ -94,6 +110,26 @@ FOREACH(i in RANGE(0, length(days)-2) |
             CREATE UNIQUE (day1)-[:NEXT]->(day2))));
 
 
+// Connect Hours Sequentially
+MATCH (year:Year)-[:CONTAINS]->(month)-[:CONTAINS]->(day)-[:CONTAINS]->(hour)
+WITH year, month, day, hour
+ORDER BY year.value, month.value, day.value, hour.value
+WITH collect(hour) AS hours
+FOREACH(i in RANGE(0, length(hours)-2) |
+    FOREACH(hour1 in [hours[i]] |
+        FOREACH(hour2 in [hours[i+1]] |
+            CREATE UNIQUE (hour1)-[:NEXT]->(hour2))));
+
+// Connect Minutes Sequentially
+// MATCH (year:Year)-[:CONTAINS]->(month)-[:CONTAINS]->(day)-[:CONTAINS]->(hour)-[:CONTAINS]->(minute)
+// WITH year, month, day, hour, minute
+// ORDER BY year.value, month.value, day.value, hour.value, minute.value
+// WITH collect(minute) AS minutes
+// FOREACH(i in RANGE(0, length(minutes)-2) |
+//     FOREACH(minute1 in [minutes[i]] |
+//         FOREACH(minute2 in [minutes[i+1]] |
+//             CREATE UNIQUE (minute1)-[:NEXT]->(minute2))));
+
 
 
 //Lookup Time Tree example with Year, Month and Day Showing Next Relationship Across Months
@@ -102,3 +138,8 @@ WITH y
 MATCH (y)-[:CONTAINS]->(m:Month) WHERE m.value = 1 OR m.value = 12 WITH y, m
 MATCH (m)-[:CONTAINS]->(d)
 RETURN y, m, d;
+
+
+// delete large nodes
+call apoc.periodic.iterate("MATCH (s:Stop)  return s", "DETACH DELETE s", {batchSize:10000})
+yield batches, total return batches, total
