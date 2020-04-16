@@ -46,7 +46,7 @@ query = """
               and year = cast(extract( YEAR from date '{datareferencia}') as varchar)
               and month= cast(extract( MONTH from date '{datareferencia}') as varchar)
               and day = cast(extract( DAY from date '{datareferencia}')  as varchar)
-  ),
+),
  query_1 as (
     select cod_linha     as line_code
           ,cod_ponto     as start_point

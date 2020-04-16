@@ -16,8 +16,9 @@ create index on :Stop (line_code ,latitude ,longitude,vehicle,event_time);
 create index on :Stop (line_code ,latitude ,longitude,event_time);
 
 create index on :Schedule (start_time, end_time, time_table);
-
 create index on :Schedule (start_time, end_time, time_table, line_code, start_point);
+create index on :Schedule (start_time, end_time, time_table, line_code, start_point, year, month, day, vehicle, line_way);
+
 create index on :Schedule (line_code, start_point);
 
 create index on :Stop (latitude, longitude,event_timestamp, event_time,line_code);
@@ -36,8 +37,8 @@ create constraint on (v:Vehicle) ASSERT v.vehicle is UNIQUE;
 CREATE INDEX ON :Month(value);
 CREATE INDEX ON :Day(value);
 CREATE INDEX ON :Hour(value);
-CREATE INDEX ON :Minute(value);
-CREATE INDEX ON :Second(value);
+// CREATE INDEX ON :Minute(value);
+// CREATE INDEX ON :Second(value);
 
 
 //Create Time Tree with Day Depth
