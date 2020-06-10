@@ -93,7 +93,7 @@ target_path = "/data/processed/{}".format(table)
 
 if args.table == 'veiculos':
     events_processed = process_raw_events(spark_df)
-    etlspark.save(events_processed, target_path, coalesce=1)
+    etlspark.save_partitioned(events_processed, target_path, coalesce=1)
     #etlspark.load_to_database(events_processed, args.table)
 else:
     spark_df = spark_df.withColumn("year", year("datareferencia")).withColumn("month", month("datareferencia")).withColumn("day",dayofmonth("datareferencia"))
