@@ -36,7 +36,7 @@ services:
             - ./dags:/usr/local/airflow/dags
             # Uncomment to include custom plugins
             - ./plugins:/usr/local/airflow/plugins
-            - ./data:/usr/local/airflow/data
+            - /work/datalake:/usr/local/airflow/data/
             - ./neo4j:/usr/local/airflow/neo4j
             -  /var/run/docker.sock:/var/run/docker.sock:ro
         ports:
@@ -97,7 +97,7 @@ services:
             - ./dags:/usr/local/airflow/dags
             # Uncomment to include custom plugins
             - ./plugins:/usr/local/airflow/plugins
-            - ./data:/usr/local/airflow/data
+            -  /work/datalake/:/usr/local/airflow/data
             - ./neo4j:/usr/local/airflow/neo4j
             -  /var/run/docker.sock:/var/run/docker.sock:ro
         environment:
@@ -133,26 +133,26 @@ services:
 #        networks:
 #            airflow-network:
 #                ipv4_address: 10.5.0.8
-    neo4j:
-        image: neo4j:3.5.6
-        restart: always
-        ports:
-          - 7474:7474
-          - 7687:7687
-        volumes:
-          - ./neo4j/data:/data
-          - ./neo4j/logs:/logs
-          - ./neo4j/plugins:/plugins
-          - ./neo4j/import:/import
-        environment:
-            NEO4J_dbms_security_procedures_unrestricted: algo.*, apoc.*
-            NEO4J_apoc_import_file_enabled: "true"
-            NEO4J_dbms_memory_pagecache_size: "8G"
-            NEO4J_dbms_memory_heap_initial__size: "10G"
-            NEO4J_dbms_memory_heap_max__size: "10G"
-        networks:
-            airflow-network:
-                ipv4_address: 10.5.0.9
+#    neo4j:
+#        image: neo4j:3.5.6
+#        restart: always
+#        ports:
+#          - 7474:7474
+#          - 7687:7687
+#        volumes:
+#          - ./neo4j/data:/data
+#          - ./neo4j/logs:/logs
+#          - ./neo4j/plugins:/plugins
+#          - ./neo4j/import:/import
+#        environment:
+#            NEO4J_dbms_security_procedures_unrestricted: algo.*, apoc.*
+#            NEO4J_apoc_import_file_enabled: "true"
+#            NEO4J_dbms_memory_pagecache_size: "8"
+#            NEO4J_dbms_memory_heap_initial__size: "10G"
+#            NEO4J_dbms_memory_heap_max__size: "10G"
+#        networks:
+#            airflow-network:
+#                ipv4_address: 10.5.0.9
 networks:
   airflow-network:
     driver: bridge
