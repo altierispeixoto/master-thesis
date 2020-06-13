@@ -18,9 +18,9 @@ DEFAULT_ARGS = {
 
 config = yaml.load(open('./dags/config/data.yml'), Loader=yaml.FullLoader)
 date_range = ast.literal_eval(Variable.get("date_range"))
-fmt = "%Y-%m-%d"
-sdate = datetime.strptime(date_range['date_start'], fmt)
-edate = datetime.strptime(date_range['date_end'], fmt)
+
+sdate = datetime.strptime(date_range['date_start'], "%Y-%m-%d")
+edate = datetime.strptime(date_range['date_end'], "%Y-%m-%d")
 
 delta = edate - sdate
 
@@ -42,8 +42,7 @@ def execute_spark_process(task_id,command, dag ):
             'PYSPARK_PYTHON': "python3",
             'SPARK_HOME': "/spark"
         },
-        volumes=['/mestrado/master-thesis/airflow/spark-urbs-processing:/spark-urbs-processing'
-            , '/mestrado/master-thesis/airflow/data:/data'],
+        volumes=['/work/master-thesis/airflow/spark-urbs-processing:/spark-urbs-processing', '/work/datalake:/data'],
         command=command,
         docker_url='unix://var/run/docker.sock',
         network_mode='host', dag=dag
@@ -58,12 +57,12 @@ def process_etl_queries(datareferencia, dag):
     for t in config['etl_queries']:
         query = config['etl_queries'][t]
 
-        query  = query.format(datareferencia=datareferencia)
+        query = query.format(datareferencia=datareferencia)
         load_from_pg = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
                        '/spark-urbs-processing/jars/presto-jdbc-0.221.jar  /spark-urbs-processing/load_from_prestodb.py -q "{}" -f {} -d {}' \
             .format(query, t, datareferencia)
 
-        tasks.append(execute_spark_process('spark_etl_from_presto_{}_{}'.format(t, datareferencia), load_from_pg, dag))
+        tasks.append(execute_spark_process(f"spark_etl_from_presto_{t}_{datareferencia}", load_from_pg, dag))
     return tasks
 
 
@@ -84,6 +83,6 @@ for i in range(delta.days + 1):
 
 
     start >> process_etl_queries(datareferencia, dag) >> end
-    start >> execute_spark_process('spark_etl_stop_events-{}'.format(datareferencia), stopevents, dag)
-    start >> execute_spark_process('spark_etl_event_stop_edges-{}'.format(datareferencia), event_stop_edges, dag) >> end
-    start >> execute_spark_process('spark_etl_tracking_data-{}'.format(datareferencia), tracking_data, dag) >> end
+    start >> execute_spark_process(f"spark_etl_stop_events-{datareferencia}", stopevents, dag)
+    start >> execute_spark_process(f"spark_etl_event_stop_edges-{datareferencia}", event_stop_edges, dag) >> end
+    start >> execute_spark_process(f"spark_etl_tracking_data-{datareferencia}", tracking_data, dag) >> end

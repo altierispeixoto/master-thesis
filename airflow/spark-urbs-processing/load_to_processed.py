@@ -28,7 +28,7 @@ def haversine(lon1, lat1, lon2, lat2):
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
         return R * c  # output distance in meters
     except:
-        print("lon1: {} lat1: {} lon2: {} lat2: {}".format(lon1, lat1, lon2, lat2))
+        print(f"lon1: {lon1} lat1: {lat1} lon2: {lon2} lat2: {lat2}")
 
 
 def create_flag_status(delta_velocity):
@@ -89,13 +89,11 @@ table = args.table
 
 spark_df = etlspark.extract(source_path)
 
-target_path = "/data/processed/{}".format(table)
+target_path = f"/data/processed/{table}"
 
 if args.table == 'veiculos':
     events_processed = process_raw_events(spark_df)
     etlspark.save_partitioned(events_processed, target_path, coalesce=1)
-    #etlspark.load_to_database(events_processed, args.table)
 else:
-    spark_df = spark_df.withColumn("year", year("datareferencia")).withColumn("month", month("datareferencia")).withColumn("day",dayofmonth("datareferencia"))
+    spark_df = spark_df.withColumn("year", year("datareferencia")).withColumn("month", month("datareferencia")).withColumn("day", dayofmonth("datareferencia"))
     etlspark.save_partitioned(spark_df, target_path, coalesce=1)
-    #etlspark.load_to_database(spark_df, args.table)

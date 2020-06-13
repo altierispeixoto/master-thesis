@@ -64,14 +64,14 @@ with bs, bse match (bs)-[:NEXT_STOP* {line_code:'666'}]->(bse) return *
 
 CALL algo.pageRank.stream(
   'MATCH (u:User) WHERE exists( (u)-[:FRIENDS]-() ) RETURN id(u) as id',
-  'MATCH (u1:User)-[:FRIENDS]-(u2:User) RETURN id(u1) as source, id(u2) as target',
+  'MATCH (u1:User)-[:FRIENDS]-(u2:User) RETURN id(u1) as lib, id(u2) as target',
   {graph:'cypher'}
 ) YIELD nodeId,score with algo.asNode(nodeId) as node, score order by score desc limit 10
 RETURN node {.name, .review_count, .average_stars,.useful,.yelping_since,.funny}, score
 
 
 CALL algo.pageRank.stream(
-'MATCH (bs:BusStop)<-[:EVENT_STOP]-(s:Stop)<-[:EXISTS_STOP]-(h:Hour {value:5})<-[:CONTAINS]-(d:Day {value:2})<-[:CONTAINS]-(m:Month {value:5})<-[:CONTAINS]-(y:Year) RETURN id(bs) as source, id(s) as target',
+'MATCH (bs:BusStop)<-[:EVENT_STOP]-(s:Stop)<-[:EXISTS_STOP]-(h:Hour {value:5})<-[:CONTAINS]-(d:Day {value:2})<-[:CONTAINS]-(m:Month {value:5})<-[:CONTAINS]-(y:Year) RETURN id(bs) as lib, id(s) as target',
 'EVENT_STOP')
 YIELD nodeId, score
 with algo.asNode(nodeId) as node, score order by score desc limit 10  
@@ -80,7 +80,7 @@ RETURN node, score
 
 CALL algo.pageRank.stream(
   'MATCH (bs:BusStop) WHERE exists( (bs)-[:EVENT_STOP]-() ) RETURN id(bs) as id',
-  'MATCH (bs:BusStop)-[:EVENT_STOP]<-(s:Stop)-[:EXISTS_STOP]-(h:Hour {value:5})<-[:CONTAINS]-(d:Day {value:2})<-[:CONTAINS]-(m:Month {value:5})<-[:CONTAINS]-(y:Year) RETURN id(bs) as source, id(s) as target',
+  'MATCH (bs:BusStop)-[:EVENT_STOP]<-(s:Stop)-[:EXISTS_STOP]-(h:Hour {value:5})<-[:CONTAINS]-(d:Day {value:2})<-[:CONTAINS]-(m:Month {value:5})<-[:CONTAINS]-(y:Year) RETURN id(bs) as lib, id(s) as target',
   {graph:'cypher'}
 ) YIELD nodeId,score with algo.asNode(nodeId) as node, score order by score desc limit 10
 
@@ -93,7 +93,7 @@ ORDER BY score DESC LIMIT 10
 
 CALL algo.pageRank.stream('
 MATCH (y:Year)-[:CONTAINS]->(m:Month {value:5})-[:CONTAINS]->(d:Day {value:2})-[:CONTAINS]->(h:Hour {value:8})-[:EXISTS_STOP]-(s:Stop) return s',
-'MATCH (s)-[r]-(bs:BusStop) return id(s) as source, id(bs) as target, count(*) as weight ORDER BY weight DESC limit 20',
+'MATCH (s)-[r]-(bs:BusStop) return id(s) as lib, id(bs) as target, count(*) as weight ORDER BY weight DESC limit 20',
 {graph:'cypher'}
 ) YIELD nodeId,score with algo.asNode(nodeId) as node, score order by score desc limit 10
 return node, score 
@@ -102,7 +102,7 @@ return node, score
 CALL algo.pageRank.stream(
  "MATCH (bs:BusStop) return id(bs) as id",
  "MATCH (y:Year)-[:CONTAINS]->(m:Month {value:5})-[:CONTAINS]->(d:Day {value:2})-[:CONTAINS]->(h:Hour {value:10})-[:EXISTS_STOP]->(s:Stop)-[:EVENT_STOP]->(bs:BusStop)-[:NEXT_STOP]->(be:BusStop) 
-  RETURN id(bs) AS source, id(be) AS target, count(*) as weight
+  RETURN id(bs) AS lib, id(be) AS target, count(*) as weight
  ",
  {graph:"cypher", weightProperty: "weight"})
 YIELD nodeId, score
@@ -116,7 +116,7 @@ LIMIT 10
 CALL algo.pageRank.stream(
  "MATCH (bs:BusStop) return id(bs) as id",
  "MATCH (y:Year)-[:CONTAINS]->(m:Month {value:5})-[:CONTAINS]->(d:Day {value:2})-[:CONTAINS]->(h:Hour {value:10})-[:EXISTS_STOP]->(s:Stop)-[:EVENT_STOP]->(bs:BusStop)-[:NEXT_STOP]->(be:BusStop) 
-  RETURN id(bs) AS source, id(be) AS target, count(*) as weight
+  RETURN id(bs) AS lib, id(be) AS target, count(*) as weight
  ",
  {graph:"cypher", weightProperty: "weight"})
 YIELD nodeId, score 
@@ -131,7 +131,7 @@ CALL algo.pageRank.stream(
  "MATCH (bs:BusStop) return id(bs) as id",
  "MATCH (y:Year)-[:CONTAINS]->(m:Month {value:5})-[:CONTAINS]->(d:Day {value:2})-[:CONTAINS]->(h:Hour)-[:EXISTS_STOP]->(s:Stop)-[:EVENT_STOP]->(bs:BusStop)-[:NEXT_STOP]->(be:BusStop) 
   WHERE h.value IN [7,8,9]
-  RETURN id(bs) AS source, id(be) AS target, count(*) as weight
+  RETURN id(bs) AS lib, id(be) AS target, count(*) as weight
  ",
  {graph:"cypher", weightProperty: "weight"})
 YIELD nodeId, score
@@ -144,7 +144,7 @@ CALL algo.pageRank.stream(
  "MATCH (bs:BusStop) return id(bs) as id",
  "MATCH (y:Year)-[:CONTAINS]->(m:Month {value:5})-[:CONTAINS]->(d:Day {value:2})-[:CONTAINS]->(h:Hour)-[:EXISTS_STOP]->(s:Stop)-[:EVENT_STOP]->(bs:BusStop)-[:NEXT_STOP]->(be:BusStop) 
   WHERE h.value IN [12,13,14]
-  RETURN id(bs) AS source, id(be) AS target, count(*) as weight
+  RETURN id(bs) AS lib, id(be) AS target, count(*) as weight
  ",
  {graph:"cypher", weightProperty: "weight"})
 YIELD nodeId, score

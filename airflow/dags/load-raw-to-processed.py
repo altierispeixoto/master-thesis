@@ -1,13 +1,10 @@
 from airflow.models import DAG
 import airflow
 from airflow.operators.dummy_operator import DummyOperator
-from airflow.operators.python_operator import PythonOperator
-from airflow.operators.postgres_operator import PostgresOperator
 from airflow.operators.docker_operator import DockerOperator
 from airflow.models import Variable
 from datetime import timedelta, datetime
 import ast
-from pprint import pprint
 import yaml
 
 config = yaml.load(open('./dags/config/data.yml'), Loader=yaml.FullLoader)
@@ -22,6 +19,7 @@ args = {
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 1,
+    'pool': 'load-raw-to-processed',
     'retry_delay': timedelta(minutes=5)
 }
 
@@ -30,34 +28,33 @@ dag = DAG(dag_id='load-raw-to-processed', default_args=args, schedule_interval=N
 start = DummyOperator(task_id='start', dag=dag)
 end = DummyOperator(task_id='end', dag=dag)
 
-
-fmt = "%Y-%m-%d"
-sdate = datetime.strptime(date_range['date_start'], fmt)
-edate = datetime.strptime(date_range['date_end'], fmt)
+sdate = datetime.strptime(date_range['date_start'], "%Y-%m-%d")
+edate = datetime.strptime(date_range['date_end'], "%Y-%m-%d")
 
 delta = edate - sdate
 
+spark_submit = "/spark/bin/spark-submit --master local[*] --executor-memory 4g --driver-memory 4g --conf " \
+               "spark.network.timeout=600s "
+
 for t in config['etl_tasks']:
 
-    spark_load_to_pg = []
+    transform_to_parquet = []
     load_to_raw = []
     for i in range(delta.days + 1):
         day = sdate + timedelta(days=i)
         download_file_day = day.strftime("%Y_%m_%d")
 
-        base_date = day.replace(day=1).strftime("%Y-%m-%d")
+        base_date = day.replace(day=1).strftime("%Y-%m")
 
         folder = config['etl_tasks'][t]['folder']
         file = config['etl_tasks'][t]['file'].replace(".xz", "")
 
-        filepath = 'data/raw/{}/{}/{}_{}'.format(base_date, folder, download_file_day, file)
+        filepath = f"data/raw/{base_date}/{folder}/{download_file_day}_{file}"
 
+        load_to_processed = f"{spark_submit} /spark-urbs-processing/load_to_processed.py -f {filepath} -t {folder}"
 
-        load_to_pg = '/spark/bin/spark-submit --master local[*] /spark-urbs-processing/load_to_processed.py -f {} -t {}' \
-            .format(filepath, folder)
-
-        spark_load_to_pg.append(DockerOperator(
-            task_id='spark_etl_to_pg_{}_{}'.format(download_file_day, file),
+        transform_to_parquet.append(DockerOperator(
+            task_id=f"transform_to_parquet_{download_file_day}_{file}",
             image='altr/spark',
             api_version='auto',
             auto_remove=True,
@@ -65,14 +62,13 @@ for t in config['etl_tasks']:
                 'PYSPARK_PYTHON': "python3",
                 'SPARK_HOME': "/spark"
             },
-            volumes=['/mestrado/master-thesis/airflow/spark-urbs-processing:/spark-urbs-processing'
-                , '/mestrado/master-thesis/airflow/data:/data'],
-            command=load_to_pg,
+            volumes=['/work/master-thesis/airflow/spark-urbs-processing:/spark-urbs-processing', '/work/datalake:/data'],
+            command=load_to_processed,
             docker_url='unix://var/run/docker.sock',
             network_mode='host', dag=dag
         ))
 
-    start >> spark_load_to_pg[0] 
-    for j in range(0, len(spark_load_to_pg)-1):
-        spark_load_to_pg[j] >> spark_load_to_pg[j+1]
-    spark_load_to_pg[len(spark_load_to_pg)-1] >> end
+    start >> transform_to_parquet[0]
+    for j in range(0, len(transform_to_parquet)-1):
+        transform_to_parquet[j] >> transform_to_parquet[j+1]
+    transform_to_parquet[len(transform_to_parquet)-1] >> end
