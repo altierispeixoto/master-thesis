@@ -421,7 +421,7 @@ match(bs:BusStop {neighbourhood:'CAMPO COMPRIDO',section_puC'}) set bs.section_n
 
 
 
-MATCH (poi:Poi{category:'Unidade Saude Basica',source:'planilha'}),(bs:BusStop)
+MATCH (poi:Poi{category:'Unidade Saude Basica',lib:'planilha'}),(bs:BusStop)
 WHERE distance(point({longitude: toFloat(poi.longitude),latitude: toFloat(poi.latitude) ,crs: 'wgs-84'}) ,point({longitude: toFloat(bs.longitude),latitude: toFloat(bs.latitude) ,crs: 'wgs-84'})) < 2000
 MERGE (bs)-[:WALK]->(poi)
 
