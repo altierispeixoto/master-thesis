@@ -1,4 +1,4 @@
-from pyspark.sql.functions import *
+import pyspark.sql.functions as F
 from pyspark.sql.types import DoubleType, StringType
 from sparketl import ETLSpark
 from argparse import ArgumentParser
@@ -12,21 +12,21 @@ parser.add_argument("-d", "--date", dest="date",
 args = parser.parse_args()
 datareferencia = args.date
 
-query = """
-( with
+query = f"""
+  with
   pontos_linha as (
      select * 
        from pontoslinha 
-       where  year = cast(extract( YEAR from date '{datareferencia}') as varchar)
-         and  month= cast(extract( MONTH from date '{datareferencia}') as varchar)
-         and  day = cast(extract( DAY from date '{datareferencia}')  as varchar)
+       where  year = year('{datareferencia}')
+         and  month= month('{datareferencia}')
+         and  day = dayofmonth('{datareferencia}')
      ),
   tabela_veiculo as (
    select * 
       from tabelaveiculo 
-      where  year = cast(extract( YEAR from date '{datareferencia}') as varchar)
-         and  month= cast(extract( MONTH from date '{datareferencia}') as varchar)
-         and  day = cast(extract( DAY from date '{datareferencia}')  as varchar)
+      where  year = year('{datareferencia}')
+         and  month= month('{datareferencia}')
+         and  day = dayofmonth('{datareferencia}')
   ),  
   stop_events as (
    select v.cod_linha,
@@ -40,12 +40,12 @@ query = """
           v.second,
           v.lat as latitude,
           v.lon as longitude,
-            date_format(cast(event_timestamp as timestamp),'%T') as event_time
-            from veiculos v 
+          date_format(event_timestamp, 'HH:mm:ss') as event_time
+        from veiculos v 
             where v.moving_status = 'STOPPED' 
-              and year = cast(extract( YEAR from date '{datareferencia}') as varchar)
-              and month= cast(extract( MONTH from date '{datareferencia}') as varchar)
-              and day = cast(extract( DAY from date '{datareferencia}')  as varchar)
+              and year = year('{datareferencia}')
+              and month= month('{datareferencia}')
+              and day = dayofmonth('{datareferencia}')
 ),
  query_1 as (
     select cod_linha     as line_code
@@ -113,8 +113,8 @@ line_way_events_stop as (
         ,pl.nome   as bus_stop_name
         ,pl.num    as bus_stop_number
   from line_way_events_stop lwep
-     inner join pontos_linha  pl on (lwep.line_code = pl.cod and lwep.line_way = pl.sentido ) ) q
-""".format(datareferencia=datareferencia)
+     inner join pontos_linha  pl on (lwep.line_code = pl.cod and lwep.line_way = pl.sentido ) 
+"""
 
 
 def haversine(lon1, lat1, lon2, lat2):
@@ -138,17 +138,17 @@ def haversine(lon1, lat1, lon2, lat2):
     return R*c  # output distance in meters
 
 
-apply_haversine = udf(lambda lon0, lat0, lon1, lat1, : haversine(lon0, lat0, lon1, lat1), DoubleType())
+apply_haversine = F.udf(lambda lon0, lat0, lon1, lat1, : haversine(lon0, lat0, lon1, lat1), DoubleType())
 
 
-events = etlspark.load_from_presto(query = query)
+events = etlspark.load_spark_sql(query = query)
 
 
 events = events.withColumn("distance",
-            apply_haversine(col('longitude').cast('double'), col('latitude').cast('double'), col('busstop_longitude').cast('double'), col('busstop_latitude').cast('double'))) \
+            apply_haversine(F.col('longitude').cast('double'), F.col('latitude').cast('double'), F.col('busstop_longitude').cast('double'), F.col('busstop_latitude').cast('double'))) \
             .filter("distance < 60")
 
 evt = events.select(["line_code", "latitude", "longitude", "vehicle", "event_time", "line_way", "bus_stop_number"])
 
-target_path = "/data/neo4j/{folder}/{datareferencia}".format(folder="event-stop-edges",datareferencia=datareferencia)
+target_path = f"/data/neo4j/event-stop-edges/{datareferencia}"
 etlspark.save(evt, target_path, coalesce=1, format="csv")

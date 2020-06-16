@@ -33,8 +33,7 @@ edate = datetime.strptime(date_range['date_end'], "%Y-%m-%d")
 
 delta = edate - sdate
 
-spark_submit = "/spark/bin/spark-submit --master local[*] --executor-memory 4g --driver-memory 4g --conf " \
-               "spark.network.timeout=600s "
+
 
 for t in config['etl_tasks']:
 
@@ -51,11 +50,15 @@ for t in config['etl_tasks']:
 
         filepath = f"data/raw/{base_date}/{folder}/{download_file_day}_{file}"
 
+        spark_submit = "/spark/bin/spark-submit --master local[*] --executor-memory 4g --driver-memory 4g --conf " \
+                       "spark.network.timeout=600s "
+
         load_to_processed = f"{spark_submit} /spark-urbs-processing/load_to_processed.py -f {filepath} -t {folder}"
+        print(load_to_processed)
 
         transform_to_parquet.append(DockerOperator(
             task_id=f"transform_to_parquet_{download_file_day}_{file}",
-            image='altr/spark',
+            image='bde2020/spark-master:2.4.4-hadoop2.7', #altr/spark
             api_version='auto',
             auto_remove=True,
             environment={

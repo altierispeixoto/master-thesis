@@ -1,6 +1,7 @@
 from pyspark.conf import SparkConf
 from pyspark.sql import SQLContext
-from pyspark.sql.functions import *
+import pyspark.sql.functions as F
+from pyspark import SparkContext
 
 import gc
 
@@ -10,9 +11,9 @@ class ETLSpark:
     def __init__(self):
         self.conf = SparkConf().setAppName("App")
         self.conf = (self.conf.setMaster('local[*]')
-                     # .set('spark.executor.memory', '8G')
-                     # .set('spark.driver.memory', '20G')
-                     # .set('spark.driver.maxResultSize', '10G')
+                     .set('spark.executor.memory', '2G')
+                     .set('spark.driver.memory', '2G')
+                     .set('spark.driver.maxResultSize', '2G')
                      .set('spark.sql.autoBroadcastJoinThreshold', '-1')
                      .set("spark.sql.sources.partitionOverwriteMode", "dynamic")
                      )
@@ -21,18 +22,18 @@ class ETLSpark:
         self.sqlContext = SQLContext(self.sc)
 
     def extract(self, src):
-        print(f"FILE: {input_file_name()}")
-        df = self.sqlContext.read.json(src).withColumn("filepath", input_file_name())
+        print(f"FILE: {F.input_file_name()}")
+        df = self.sqlContext.read.json(src).withColumn("filepath", F.input_file_name())
 
-        split_col = split(df['filepath'], '/')
+        split_col = F.split(df['filepath'], '/')
 
         df = df.withColumn('filename', split_col.getItem(7))
 
-        split = split(df['filename'], '_')
+        split = F.split(df['filename'], '_')
 
-        df = df.withColumn('datareferencia', to_date(
-             concat(split.getItem(0), lit("-"), split.getItem(1), lit("-"),
-                             split.getItem(2)), 'yyyy-MM-dd'))
+        df = df.withColumn('datareferencia', F.to_date(
+            F.concat(split.getItem(0), F.lit("-"), split.getItem(1), F.lit("-"),
+                     split.getItem(2)), 'yyyy-MM-dd'))
 
         dropcolumns = ["filepath", "filename"]
         df = df.toDF(*[c.lower() for c in df.columns]).drop(*dropcolumns)
@@ -64,6 +65,16 @@ class ETLSpark:
     #     #print(df.show(5))
     #     return df
 
+    def load_spark_sql(self, query):
+        self.sqlContext.read.parquet("/data/processed/veiculos").registerTempTable("veiculos")
+        self.sqlContext.read.parquet("/data/processed/linhas").registerTempTable("linhas")
+        self.sqlContext.read.parquet("/data/processed/pontoslinha").registerTempTable("pontoslinha")
+        self.sqlContext.read.parquet("/data/processed/tabelaveiculo").registerTempTable("tabelaveiculo")
+
+        df = self.sqlContext.sql(sqlQuery=query)
+
+        return df
+
     def load_from_presto(self, query):
         db_properties = {}
         db_url = "jdbc:presto://localhost:8585/hive/default"
@@ -81,7 +92,8 @@ class ETLSpark:
         gc.collect()
 
     def save_partitioned(self, src_data, target_path, coalesce=1, format="parquet"):
-        src_data.repartition(coalesce).write.partitionBy("year", "month", "day").mode('overwrite').option("header", "true").format(format).save(target_path)
+        src_data.repartition(coalesce).write.partitionBy("year", "month", "day").mode('overwrite').option("header",
+                                                                                                          "true").format(
+            format).save(target_path)
         del src_data
         gc.collect()
-

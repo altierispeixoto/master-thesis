@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 from sparketl import ETLSpark
+
 etlspark = ETLSpark()
 
 parser = ArgumentParser()
@@ -12,7 +13,6 @@ parser.add_argument("-f", "--folder", dest="folder",
 parser.add_argument("-d", "--datareferencia", dest="datareferencia",
                     help="datareferencia", metavar="DATAREFERENCIA")
 
-
 args = parser.parse_args()
 
 query = args.query
@@ -21,5 +21,5 @@ datareferencia = args.datareferencia
 
 target_path = f"/data/neo4j/{folder}/{datareferencia}/"
 
-df = etlspark.load_from_presto(query)
+df = etlspark.load_spark_sql(query)
 etlspark.save(df, target_path, coalesce=1, format="csv")

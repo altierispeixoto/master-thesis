@@ -3,10 +3,10 @@ set hive.exec.dynamic.partition=true
 set hive.exec.dynamic.partition.mode=nonstrict
 
 create external table linhas(
-categoria_servico string,
-cod               string,
-nome              string,
-nome_cor          string,
+    categoria_servico string,
+    cod               string,
+    nome              string,
+    nome_cor          string,
     somente_cartao    string,
     datareferencia    date
   ) PARTITIONED BY (year string, month string, day string)
@@ -18,17 +18,17 @@ where year=2020 and month=2 limit 10;
 
 
 create external table pontoslinha(
-cod            string,
-grupo          string,
-itinerary_id   string,
-lat            string,
-lon            string,
-nome           string,
-num            string,
-sentido        string,
-seq            string,
-tipo           string,
-datareferencia date
+    cod            string,
+    grupo          string,
+    itinerary_id   string,
+    lat            string,
+    lon            string,
+    nome           string,
+    num            string,
+    sentido        string,
+    seq            string,
+    tipo           string,
+    datareferencia date
 )
 PARTITIONED BY (year string, month string, day string)
 STORED AS PARQUET LOCATION '/usr/urbs/pontoslinha';
@@ -38,14 +38,14 @@ select * from pontoslinha
 where year=2020 and month=2 limit 10;
 
 create external table tabelalinha(
-adapt          string,
-cod            string,
-dia            string,
-hora           string,
-num            string,
-ponto          string,
-tabela         string,
-datareferencia date
+    adapt          string,
+    cod            string,
+    dia            string,
+    hora           string,
+    num            string,
+    ponto          string,
+    tabela         string,
+    datareferencia date
 )
 PARTITIONED BY (year string, month string, day string)
 STORED AS PARQUET LOCATION '/usr/urbs/tabelalinha';
@@ -56,13 +56,13 @@ where year=2020 and month=2 limit 10;
 
 
 create external table tabelaveiculo(
-cod_linha      string,
-cod_ponto      string,
-horario        string,
-nome_linha     string,
-tabela         string,
-veiculo        string,
-datareferencia date
+    cod_linha      string,
+    cod_ponto      string,
+    horario        string,
+    nome_linha     string,
+    tabela         string,
+    veiculo        string,
+    datareferencia date
 )
 PARTITIONED BY (year string, month string, day string)
 STORED AS PARQUET LOCATION '/usr/urbs/tabelaveiculo';
@@ -73,29 +73,29 @@ where year=2020 and month=2 limit 10;
 
 
 create external table trechositinerarios(
-codigo_urbs             string,
-cod_categoria           string,
-cod_empresa             string,
-cod_itinerario          string,
-cod_linha               string,
-cod_pto_parada_th       string,
-cod_pto_trecho_a        string,
-cod_pto_trecho_b        string,
-extensao_trecho_a_ate_b string,
-nome_categoria     string,
-nome_empresa       string,
-nome_itinerario    string,
-nome_linha         string,
-nome_pto_abreviado string,
-nome_pto_parada_th string,
-pto_especial       string,
-seq_ponto_trecho_a string,
-seq_ponto_trecho_b string,
-seq_pto_iti_th     string,
-stop_code       string,
-stop_name       string,
-tipo_trecho     string,
-datareferencia  date
+    codigo_urbs             string,
+    cod_categoria           string,
+    cod_empresa             string,
+    cod_itinerario          string,
+    cod_linha               string,
+    cod_pto_parada_th       string,
+    cod_pto_trecho_a        string,
+    cod_pto_trecho_b        string,
+    extensao_trecho_a_ate_b string,
+    nome_categoria     string,
+    nome_empresa       string,
+    nome_itinerario    string,
+    nome_linha         string,
+    nome_pto_abreviado string,
+    nome_pto_parada_th string,
+    pto_especial       string,
+    seq_ponto_trecho_a string,
+    seq_ponto_trecho_b string,
+    seq_pto_iti_th     string,
+    stop_code       string,
+    stop_name       string,
+    tipo_trecho     string,
+    datareferencia  date
 )
 PARTITIONED BY (year string, month string, day string)
 STORED AS PARQUET LOCATION '/usr/urbs/trechositinerarios';
