@@ -13,7 +13,7 @@ DEFAULT_ARGS = {
     'start_date': airflow.utils.dates.days_ago(2),
     'retries': 1,
     'retry_delay': timedelta(minutes=5),
-    'pool': 'default_pool'
+    'pool': 'prepare-data-to-neo4j'
 }
 
 config = yaml.load(open('./dags/config/data.yml'), Loader=yaml.FullLoader)
@@ -24,18 +24,18 @@ edate = datetime.strptime(date_range['date_end'], "%Y-%m-%d")
 
 delta = edate - sdate
 
-
 """Build DAG."""
-dag = DAG('prepare-data-to-neo4j', default_args=DEFAULT_ARGS, schedule_interval=None, catchup=False, max_active_runs = 2)
+dag = DAG('prepare-data-to-neo4j', default_args=DEFAULT_ARGS, schedule_interval=None, catchup=False, max_active_runs=2)
 start = DummyOperator(task_id='start', dag=dag)
 end = DummyOperator(task_id='end', dag=dag)
 
 spark_load_from_pg = []
 
-def execute_spark_process(task_id,command, dag ):
+
+def execute_spark_process(task_id, command, dag):
     task = DockerOperator(
         task_id=task_id,
-        image='altr/spark',
+        image='bde2020/spark-master:2.4.4-hadoop2.7',
         api_version='auto',
         auto_remove=True,
         environment={
@@ -52,7 +52,6 @@ def execute_spark_process(task_id,command, dag ):
 
 
 def process_etl_queries(datareferencia, dag):
-
     tasks = []
     for t in config['etl_queries']:
         query = config['etl_queries'][t]
@@ -70,9 +69,10 @@ for i in range(delta.days + 1):
     day = sdate + timedelta(days=i)
     datareferencia = day.strftime("%Y-%m-%d")
 
-    stopevents = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
-                   '/spark-urbs-processing/jars/presto-jdbc-0.221.jar  /spark-urbs-processing/stop-events.py -d {}'.format(datareferencia)
-
+    # stopevents = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
+    #              '/spark-urbs-processing/jars/presto-jdbc-0.221.jar  /spark-urbs-processing/stop-events.py -d {}'.format(
+    #     datareferencia)
+    #
     tracking_data = '/spark/bin/spark-submit --master local[*] --executor-memory 6g --driver-memory 10g --conf spark.network.timeout=600s --driver-class-path ' \
                     '/spark-urbs-processing/jars/presto-jdbc-0.221.jar  /spark-urbs-processing/tracking-data.py -d {}'.format(
         datareferencia)
@@ -81,8 +81,7 @@ for i in range(delta.days + 1):
                        '/spark-urbs-processing/jars/presto-jdbc-0.221.jar  /spark-urbs-processing/event-stop-edges.py -d {}'.format(
         datareferencia)
 
-
     start >> process_etl_queries(datareferencia, dag) >> end
-    start >> execute_spark_process(f"spark_etl_stop_events-{datareferencia}", stopevents, dag)
+    # start >> execute_spark_process(f"spark_etl_stop_events-{datareferencia}", stopevents, dag)
     start >> execute_spark_process(f"spark_etl_event_stop_edges-{datareferencia}", event_stop_edges, dag) >> end
     start >> execute_spark_process(f"spark_etl_tracking_data-{datareferencia}", tracking_data, dag) >> end

@@ -27,7 +27,7 @@ etl_tasks:
 
 etl_queries:
   lines:
-      "(
+      "
           select distinct cod,
                         categoria_servico,
                         nome,
@@ -47,16 +47,15 @@ etl_queries:
                             v.day as day
                         from veiculos v
                           right join linhas l on (v.cod_linha = l.cod and l.year = v.year and l.month = v.month  and l.day = v.day)
-                           where  l.year = cast(extract( YEAR from date '{datareferencia}') as varchar)
-                             and l.month= cast(extract( MONTH from date '{datareferencia}') as varchar)
-                             and l.day = cast(extract( DAY from date '{datareferencia}')  as varchar)
+                           where  l.year = year('{datareferencia}')
+                             and l.month = month('{datareferencia}')
+                             and l.day = dayofmonth('{datareferencia}')
                           ) t
           order by cod, year, month, day
-  ) q1"
+  "
 
   busstops:
-      "(
-                  with linhas as (
+      "   with linhas as (
                           select  distinct cod,
                                   categoria_servico,
                                   nome,
@@ -76,13 +75,13 @@ etl_queries:
                                   v.day as day
                               from veiculos v
                               right join linhas l on (v.cod_linha = l.cod and l.year = v.year and l.month = v.month  and l.day = v.day)
-                                   where  l.year = cast(extract( YEAR from date '{datareferencia}') as varchar)
-                             and l.month= cast(extract( MONTH from date '{datareferencia}') as varchar)
-                             and l.day = cast(extract( DAY from date '{datareferencia}')  as varchar)
+                                   where  l.year = year('{datareferencia}')
+                             and l.month = month('{datareferencia}')
+                             and l.day = dayofmonth('{datareferencia}')
                             ) as l
                           )
                           select distinct
-                              pl.cod as cod_linha 
+                              pl.cod as cod_linha
                              ,pl.nome
                              ,pl.num
                              ,pl.tipo
@@ -94,9 +93,9 @@ etl_queries:
                              ,l.day
                           from     pontoslinha	pl
                           inner join linhas l on (pl.cod = l.cod and l.year = pl.year and l.month = pl.month  and l.day = pl.day )
-    ) q1"
+     "
 
-  routes: "(
+  routes: "
           with vlinhas as (
           	select  distinct cod,
           	              year,
@@ -109,9 +108,9 @@ etl_queries:
                              v.day as day
                       from veiculos v
                       right join linhas l on (v.cod_linha = l.cod and l.year = v.year and l.month = v.month  and l.day = v.day)
-                      where  l.year = cast(extract( YEAR from date '{datareferencia}') as varchar)
-                             and l.month= cast(extract( MONTH from date '{datareferencia}') as varchar)
-                             and l.day = cast(extract( DAY from date '{datareferencia}')  as varchar)
+                      where  l.year = year('{datareferencia}')
+                             and l.month = month('{datareferencia}')
+                             and l.day = dayofmonth('{datareferencia}')
           		) as l
           	),
           	rota_sequenciada as  (
@@ -143,9 +142,9 @@ etl_queries:
           		                     	inner join pontoslinha p2 on (cast(p1.SEQ as int) + 1 = cast(p2.SEQ as int) and p1.COD = p2.COD and p1.SENTIDO = p2.SENTIDO
           		                     	                               and p1.year = p2.year and p1.month = p2.month and p1.day = p2.day
           		                     	                               )
-          		                     	where  p1.year  = cast(extract( YEAR from date '{datareferencia}') as varchar)
-                            			   and p1.month = cast(extract( MONTH from date '{datareferencia}') as varchar)
-                                           and p1.day   = cast(extract( DAY from date '{datareferencia}')  as varchar)
+          		                     	where  p1.year  = year('{datareferencia}')
+                            			   and p1.month = month('{datareferencia}')
+                                           and p1.day   = dayofmonth('{datareferencia}')
           		               ) pseq
           							inner join linhas li  on (pseq.cod_linha = li.COD and pseq.datareferencia = li.datareferencia)
           							 order by pseq.cod_linha
@@ -172,9 +171,9 @@ etl_queries:
                   from  rota_sequenciada rt
                       left join vlinhas l on (rt.cod_linha = l.cod)
                   order by  seq_inicio,seq_fim
-    ) q1"
+    "
 
-  trip-endpoints: "(
+  trip-endpoints: "
   								with vlinhas as (
                                                    select  distinct cod,
                                                                year,
@@ -189,9 +188,9 @@ etl_queries:
                    	                                    l.datareferencia
                                                        from veiculos v
                                                            right join linhas l on (v.cod_linha = l.cod and l.year = v.year and l.month = v.month  and l.day = v.day)
-                                                       where  l.year = cast(extract( YEAR from date '{datareferencia}') as varchar)
-                             							  and l.month= cast(extract( MONTH from date '{datareferencia}') as varchar)
-                             							  and l.day = cast(extract( DAY from date '{datareferencia}')  as varchar)
+                                                       where  l.year = year('{datareferencia}')
+                             							  and l.month= month('{datareferencia}')
+                             							  and l.day = dayofmonth('{datareferencia}')
                                                    ) as l
                                              ),
                                            start_end as (
@@ -218,11 +217,12 @@ etl_queries:
                                            from start_end  ss
                                            inner join pontoslinha ps on (ps.cod = ss.cod  and ps.sentido = ss.sentido and cast(ps.seq as int) = ss.start_trip and ss.year = ps.year and ss.month = ps.month and ss.day = ps.day)
                                            inner join pontoslinha pe on (pe.cod = ss.cod  and pe.sentido = ss.sentido and cast(pe.seq as  int) = ss.end_trip and pe.year = ps.year and pe.month = ps.month and pe.day = ps.day)
-                                           where pe.year = cast(extract( YEAR from date '{datareferencia}') as varchar)
-                             				 and pe.month= cast(extract( MONTH from date '{datareferencia}') as varchar)
-                             			     and pe.day = cast(extract( DAY from date '{datareferencia}')  as varchar)
-      ) q1"
+                                           where pe.year = year('{datareferencia}')
+                             				 and pe.month = month('{datareferencia}')
+                             			     and pe.day = dayofmonth('{datareferencia}')
+      "
 
+##########################################################
   # schedules: "( 
   #              with linhas as (
   #                         select  distinct cod,
@@ -258,7 +258,7 @@ etl_queries:
   #                     order by cod_linha,horario
   #         ) q1"
 
-  trips: "(
+  trips: "
           with vlinhas as (
                     select  distinct cod,
                             year,
@@ -273,9 +273,9 @@ etl_queries:
                                       l.datareferencia
                           from veiculos v
                             right join linhas l on (v.cod_linha = l.cod and l.year = v.year and l.month = v.month  and l.day = v.day)
-                          where  l.year = cast(extract( YEAR from date '{datareferencia}') as varchar)
-                                  and l.month= cast(extract( MONTH from date '{datareferencia}') as varchar)
-                                  and l.day = cast(extract( DAY from date '{datareferencia}')  as varchar)
+                          where  l.year = year('{datareferencia}')
+                                  and l.month= month('{datareferencia}')
+                                  and l.day = dayofmonth('{datareferencia}')
                                         ) as l
                                   ),
                 start_end as (
@@ -295,7 +295,7 @@ etl_queries:
                               ,ps.sentido
                               ,ps.num     as start_point
                               ,ps.nome    as ponto_origem
-                              ,pe.num     as end_point 
+                              ,pe.num     as end_point
                               ,pe.nome    as ponto_destino
                               ,ss.year
                               ,ss.month
@@ -303,9 +303,9 @@ etl_queries:
                         from start_end  ss
                         inner join pontoslinha ps on (ps.cod = ss.cod  and ps.sentido = ss.sentido and cast(ps.seq as int) = ss.start_trip and ss.year = ps.year and ss.month = ps.month and ss.day = ps.day)
                         inner join pontoslinha pe on (pe.cod = ss.cod  and pe.sentido = ss.sentido and cast(pe.seq as  int) = ss.end_trip and pe.year = ps.year and pe.month = ps.month and pe.day = ps.day)
-                        where pe.year = cast(extract( YEAR from date '{datareferencia}') as varchar)
-                          and pe.month= cast(extract( MONTH from date '{datareferencia}') as varchar)
-                            and pe.day = cast(extract( DAY from date '{datareferencia}')  as varchar)                        
+                        where pe.year = year('{datareferencia}')
+                          and pe.month= month('{datareferencia}')
+                            and pe.day = dayofmonth('{datareferencia}')
                 ),
                 trips as (
                         select cod_linha     as line_code
@@ -315,10 +315,10 @@ etl_queries:
                               ,veiculo       as vehicle
                               ,lead(horario) over(partition by cod_linha,tabela,veiculo order by cod_linha, horario)   as end_time
                               ,lead(cod_ponto) over(partition by cod_linha,tabela,veiculo order by cod_linha, horario) as end_point
-                        from tabelaveiculo tv 
-                        where  tv.year = cast(extract( YEAR from date '{datareferencia}') as varchar)
-                              and tv.month= cast(extract( MONTH from date '{datareferencia}') as varchar)
-                              and tv.day = cast(extract( DAY from date '{datareferencia}')  as varchar)
+                        from tabelaveiculo tv
+                        where  tv.year = year('{datareferencia}')
+                              and tv.month= month('{datareferencia}')
+                              and tv.day = dayofmonth('{datareferencia}')
                         order by cod_linha,horario
                 )
                 select t.line_code
@@ -333,8 +333,27 @@ etl_queries:
                       ,te.month
                       ,te.day
                 from trips t left join trip_endpoints te  on (t.line_code = te.line_code and t.start_point = te.start_point and t.end_point = te.end_point)
-                where te.sentido is not null 
-    ) q1"
+                where te.sentido is not null
+    "
+
+  stopevents: "
+    select  v.cod_linha,
+            v.veic as vehicle,
+            v.event_timestamp as stop_timestamp,
+            v.year,
+            v.month,
+            v.day,
+            v.hour,
+            v.lat as latitude,
+            v.lon as longitude,
+            date_format(v.event_timestamp, 'HH:mm:ss') as event_time
+      from veiculos v
+      where v.moving_status = 'STOPPED'
+        and v.year  = year('{datareferencia}')
+        and v.month = month('{datareferencia}')
+        and v.day   = dayofmonth('{datareferencia}')
+        order by vehicle, event_timestamp
+    "
 
 neo4j_import:
   lines:
@@ -379,15 +398,6 @@ neo4j_import:
       MERGE (t)-[:STARTS_ON_POINT]->(bs0)
       MERGE (t)-[:ENDS_ON_POINT]->(bs1)
 
-  # busstops_timetree:
-  #   cypher_query: >
-  #       USING PERIODIC COMMIT 20000  
-  #       LOAD CSV WITH HEADERS FROM 'file:///busstops/{datareferencia}/busstops.csv' AS row
-  #       with row where NOT toInteger(row.year) IS NULL
-  #         match (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)}), (bs:BusStop {number: row.num})
-  #         with d,bs
-  #         merge (d)-[:EXISTS_BUS_STOP]->(bs)
-  
   trip_bus_stops:
     cypher_query: >
       LOAD CSV WITH HEADERS FROM "file:///busstops/{datareferencia}/busstops.csv" AS row  
@@ -429,33 +439,6 @@ neo4j_import:
         (s:Schedule {start_time:row.start_time, end_time:row.end_time, time_table:row.time_table, line_code:row.line_code, start_point:row.start_point, year:toInteger(row.year), month:toInteger(row.month), day:toInteger(row.day), vehicle:row.vehicle, line_way:row.sentido})
         MERGE (t)-[:HAS_SCHEDULE_AT]->(s)
 
-  # vehicles_timetree:
-  #   cypher_query: >
-  #     USING PERIODIC COMMIT 10000
-  #     LOAD CSV WITH HEADERS FROM 'file:///stopevents/{datareferencia}/stopevents.csv' AS row
-  #     with row where NOT toInteger(row.year) IS NULL
-  #     with distinct row.vehicle as vehicle, row.year as year, row.month as month, row.day as day
-  #     MATCH (y:Year {value:toInteger(year)})-[:CONTAINS]->(m:Month {value: toInteger(month)})-[:CONTAINS]->(d:Day {value: toInteger(day)}),(v:Vehicle {vehicle:vehicle})
-  #     WITH d,v
-  #     MERGE (d)-[:EXISTS_VEHICLE]->(v)
-
-  # trip_timetree:
-  #   cypher_query: >
-  #     LOAD CSV WITH HEADERS FROM "file:///trips/{datareferencia}/trips.csv" AS row
-  #     with row where NOT toInteger(row.year) IS NULL and not row.vehicle = "" and not row.start_time ="" and not row.end_time = "" and not row.time_table =""
-  #     MATCH (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:EXISTS_LINE]->(l:Line {line_code:row.line_code})-[:HAS_TRIP]->(t:Trip)-[:STARTS_ON_POINT]->(bss:BusStop {number:row.start_point})
-  #     with distinct d , t 
-  #     MERGE (d)-[:EXISTS_TRIP]->(t)
-
-  # schedules_timetree:
-  #   cypher_query: >
-  #     USING PERIODIC COMMIT 10000
-  #     LOAD CSV WITH HEADERS FROM "file:///trips/{datareferencia}/trips.csv" AS row
-  #     with row where NOT toInteger(row.year) IS NULL and not row.vehicle = "" and not row.start_time ="" and not row.end_time = "" and not row.time_table =""
-  #     MATCH (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)}), (s:Schedule {start_time:row.start_time, end_time:row.end_time, time_table:row.time_table, line_code:row.line_code, start_point: row.start_point})
-  #     MERGE (d)-[:EXISTS_SCHEDULE]->(s)
-  
-
   vehicle_schedules:
     cypher_query: >
       USING PERIODIC COMMIT 10000
@@ -464,32 +447,6 @@ neo4j_import:
       MATCH (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[r2:EXISTS_LINE]->(l:Line {line_code:row.line_code})-[:HAS_TRIP]->(t:Trip {line_way:row.sentido})-[:STARTS_ON_POINT]->(bs:BusStop {number:row.start_point})
       MATCH (t)-[:HAS_SCHEDULE_AT]->(s:Schedule {start_time:row.start_time, end_time:row.end_time, time_table:row.time_table, line_code:row.line_code, start_point:row.start_point, year:toInteger(row.year), month:toInteger(row.month), day:toInteger(row.day), vehicle:row.vehicle, line_way:row.sentido}), (v:Vehicle {vehicle: row.vehicle})
       MERGE (s)-[:HAS_VEHICLE_SCHEDULED]->(v)
-
-  # line_schedules:
-  #   cypher_query: >
-  #     USING PERIODIC COMMIT 10000
-  #     LOAD CSV WITH HEADERS FROM "file:///trips/{datareferencia}/trips.csv" AS row
-  #     with row where NOT toInteger(row.year) IS NULL and not row.vehicle = "" and not row.start_time ="" and not row.end_time = "" and not row.time_table =""
-  #     MATCH (s:Schedule {start_time:row.start_time, end_time:row.end_time, time_table:row.time_table, line_code:row.line_code, start_point: row.start_point}), (l:Line {line_code:row.line_code})
-  #     MERGE (l)-[:HAS_LINE_SCHEDULE]->(s)
-
-  # hour_timetree:
-  #   cypher_query: >
-  #       USING PERIODIC COMMIT 5000
-  #       LOAD CSV WITH HEADERS FROM 'file:///stopevents/{datareferencia}/stopevents.csv' AS row 
-  #       with distinct row.year as year, row.month as month , row.day as day, row.hour as hour, row.minute as minute
-  #       match (y:Year {value:toInteger(year)})-[:CONTAINS]->(m:Month {value: toInteger(month)})-[:CONTAINS]->(d:Day {value: toInteger(day)})
-  #       with distinct d, hour 
-  #       merge (d)-[:CONTAINS]->(h:Hour {value: toInteger(hour)}) 
-
-  # minute_timetree:
-  #   cypher_query: >
-  #       USING PERIODIC COMMIT 5000
-  #       LOAD CSV WITH HEADERS FROM 'file:///stopevents/{datareferencia}/stopevents.csv' AS row 
-  #       with distinct row.year as year, row.month as month , row.day as day, row.hour as hour, row.minute as minute
-  #       match (y:Year {value:toInteger(year)})-[:CONTAINS]->(m:Month {value: toInteger(month)})-[:CONTAINS]->(d:Day {value: toInteger(day)})-[:CONTAINS]->(h:Hour {value: toInteger(hour)})
-  #       with distinct h, minute 
-  #       merge (h)-[:CONTAINS]->(mi:Minute {value: toInteger(minute)})
 
   stops:
     cypher_query: >    
@@ -503,14 +460,6 @@ neo4j_import:
       LOAD CSV WITH HEADERS FROM 'file:///stopevents/{datareferencia}/stopevents.csv' AS row
       match (y:Year {value:toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:CONTAINS]->(h:Hour {value: toInteger(row.hour)}), (s:Stop {latitude:row.latitude, longitude:row.longitude,event_timestamp:row.stop_timestamp, event_time:row.event_time,line_code: row.cod_linha})
       merge (h)-[:EXISTS_STOP]->(s)
- 
-  # vehicle_stops:
-  #   cypher_query: >
-  #     USING PERIODIC COMMIT 20000
-  #     LOAD CSV WITH HEADERS FROM 'file:///stopevents/{datareferencia}/stopevents.csv' AS row
-  #     match (v:Vehicle {vehicle: row.vehicle}), (s:Stop {line_code: row.cod_linha,latitude:row.latitude, longitude:row.longitude, event_time:row.event_time})
-  #     with v, s
-  #     create (v)-[:VEHICLE_HAS_STOPPED]->(s)
 
   event-stop-edges: #event-stop-edges.csv
     cypher_query: >

@@ -1,4 +1,5 @@
 from sparketl import ETLSpark
+
 etlspark = ETLSpark()
 from argparse import ArgumentParser
 
@@ -9,17 +10,14 @@ parser.add_argument("-d", "--date", dest="date",
 args = parser.parse_args()
 datareferencia = args.date
 
-
-
-query = """
-(
+query = f"""
 with 
 events_processed as (
 	 select cod_linha, veic, event_timestamp, delta_time , delta_distance, delta_velocity , moving_status, v.year, v.month, v.day
    		from veiculos v 
-     	where v.year = cast(extract( YEAR from date '{datareferencia}') as varchar)
-       		and v.month= cast(extract( MONTH from date '{datareferencia}') as varchar)
-       		and v.day = cast(extract( DAY from date '{datareferencia}')  as varchar)
+     	where v.year =  year('{datareferencia}')
+       		and v.month= month('{datareferencia}')
+       		and v.day = dayofmonth('{datareferencia}')
 ),
 stops as (
     select cod_linha
@@ -50,7 +48,8 @@ trips as (
 )
 select cod_linha
       ,veic
-      ,date_diff('second', cast(last_stop as timestamp),cast(current_stop as timestamp) ) as delta_time
+      --,date_diff('second', cast(last_stop as timestamp), cast(current_stop as timestamp) ) as delta_time
+      ,cast(cast(current_stop as timestamp) as long) - cast(cast(last_stop as timestamp) as long)  as delta_time
       ,delta_distance
       ,delta_velocity
       ,last_stop
@@ -59,11 +58,10 @@ select cod_linha
       ,month
       ,day
 from trips
-) as q
-""".format(datareferencia=datareferencia)
+"""
 
-target_path = "/data/neo4j/{folder}/{datareferencia}".format(folder = "trackingdata",datareferencia = datareferencia)
+target_path = f"/data/neo4j/trackingdata/{datareferencia}"
 
-evt = etlspark.load_from_presto(query = query)
+evt = etlspark.load_spark_sql(query=query)
 
 etlspark.save(evt, target_path, coalesce=1, format="csv")
