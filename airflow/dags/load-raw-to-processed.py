@@ -10,7 +10,6 @@ import yaml
 config = yaml.load(open('./dags/config/data.yml'), Loader=yaml.FullLoader)
 date_range = ast.literal_eval(Variable.get("date_range"))
 
-
 args = {
     'owner': 'airflow',
     'description': 'Use of the DockerOperator',
@@ -33,12 +32,9 @@ edate = datetime.strptime(date_range['date_end'], "%Y-%m-%d")
 
 delta = edate - sdate
 
-
-
 for t in config['etl_tasks']:
 
     transform_to_parquet = []
-    load_to_raw = []
     for i in range(delta.days + 1):
         day = sdate + timedelta(days=i)
         download_file_day = day.strftime("%Y_%m_%d")
@@ -58,20 +54,21 @@ for t in config['etl_tasks']:
 
         transform_to_parquet.append(DockerOperator(
             task_id=f"transform_to_parquet_{download_file_day}_{file}",
-            image='bde2020/spark-master:2.4.4-hadoop2.7', #altr/spark
+            image='bde2020/spark-master:2.4.4-hadoop2.7',  # altr/spark
             api_version='auto',
             auto_remove=True,
             environment={
                 'PYSPARK_PYTHON': "python3",
                 'SPARK_HOME': "/spark"
             },
-            volumes=['/work/master-thesis/airflow/spark-urbs-processing:/spark-urbs-processing', '/work/datalake:/data'],
+            volumes=['/work/master-thesis/airflow/spark-urbs-processing:/spark-urbs-processing',
+                     '/work/datalake:/data'],
             command=load_to_processed,
             docker_url='unix://var/run/docker.sock',
             network_mode='host', dag=dag
         ))
 
     start >> transform_to_parquet[0]
-    for j in range(0, len(transform_to_parquet)-1):
-        transform_to_parquet[j] >> transform_to_parquet[j+1]
-    transform_to_parquet[len(transform_to_parquet)-1] >> end
+    for j in range(0, len(transform_to_parquet) - 1):
+        transform_to_parquet[j] >> transform_to_parquet[j + 1]
+    transform_to_parquet[len(transform_to_parquet) - 1] >> end
