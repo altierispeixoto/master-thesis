@@ -27,7 +27,6 @@ delta = edate - sdate
 """Build DAG."""
 dag = DAG('prepare-data-to-neo4j', default_args=DEFAULT_ARGS, schedule_interval=None, catchup=False, max_active_runs=2)
 start = DummyOperator(task_id='start', dag=dag)
-wait = DummyOperator(task_id='wait', dag=dag)
 end = DummyOperator(task_id='end', dag=dag)
 
 spark_load_from_pg = []
@@ -64,14 +63,14 @@ for t in config['etl_queries']:
         datareferencia = day.strftime("%Y-%m-%d")
 
         query = query.format(datareferencia=datareferencia)
-        task = f" {spark_submit} /spark-urbs-processing/load_from_prestodb.py -q \"{query}\" -f {t} -d {datareferencia}"
+        task = f" {spark_submit} {spark_submit_params} /spark-urbs-processing/load_from_prestodb.py -q \"{query}\" -f {t} -d {datareferencia}"
 
         tasks.append(execute_spark_process(f"spark_etl_{t}_{datareferencia}", task, dag))
 
     start >> tasks[0]
     for j in range(0, len(tasks) - 1):
         tasks[j] >> tasks[j + 1]
-    tasks[len(tasks) - 1] >> wait
+    tasks[len(tasks) - 1] >> end
 
 jobs = [
     {
@@ -97,7 +96,7 @@ for job in jobs:
         task = f"{spark_submit} {spark_submit_params} {job['task']} -d {datareferencia}"
         tasks.append(execute_spark_process(f"spark_etl_{job['task_name']}_data-{datareferencia}", task, dag))
 
-    wait >> tasks[0]
+    start >> tasks[0]
     for j in range(0, len(tasks) - 1):
         tasks[j] >> tasks[j + 1]
     tasks[len(tasks) - 1] >> end

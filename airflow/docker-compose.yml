@@ -25,7 +25,7 @@ services:
         depends_on:
             - postgres
         environment:
-            - LOAD_EX=y
+            - LOAD_EX=n
             - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
             - EXECUTOR=Celery
             - POSTGRES_USER=airflow
@@ -76,7 +76,7 @@ services:
             # Uncomment to include custom plugins
             - ./plugins:/usr/local/airflow/plugins
         environment:
-            - LOAD_EX=y
+            - LOAD_EX=n
             - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
             - EXECUTOR=Celery
             - POSTGRES_USER=airflow
