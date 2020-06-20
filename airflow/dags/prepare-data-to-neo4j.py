@@ -27,6 +27,7 @@ delta = edate - sdate
 """Build DAG."""
 dag = DAG('prepare-data-to-neo4j', default_args=DEFAULT_ARGS, schedule_interval=None, catchup=False, max_active_runs=2)
 start = DummyOperator(task_id='start', dag=dag)
+wait = DummyOperator(task_id='wait', dag=dag)
 end = DummyOperator(task_id='end', dag=dag)
 
 spark_load_from_pg = []
@@ -51,37 +52,52 @@ def execute_spark_process(task_id, command, dag):
     return task
 
 
-def process_etl_queries(datareferencia, dag):
+for t in config['etl_queries']:
+    query = config['etl_queries'][t]
     tasks = []
-    for t in config['etl_queries']:
-        query = config['etl_queries'][t]
+
+    spark_submit = "/spark/bin/spark-submit --master local[*]"
+    spark_submit_params = "--executor-memory 6g --driver-memory 10g --conf spark.network.timeout=600s"
+
+    for i in range(delta.days + 1):
+        day = sdate + timedelta(days=i)
+        datareferencia = day.strftime("%Y-%m-%d")
 
         query = query.format(datareferencia=datareferencia)
-        load_from_pg = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
-                       '/spark-urbs-processing/jars/presto-jdbc-0.221.jar  /spark-urbs-processing/load_from_prestodb.py -q "{}" -f {} -d {}' \
-            .format(query, t, datareferencia)
+        task = f" {spark_submit} /spark-urbs-processing/load_from_prestodb.py -q \"{query}\" -f {t} -d {datareferencia}"
 
-        tasks.append(execute_spark_process(f"spark_etl_from_presto_{t}_{datareferencia}", load_from_pg, dag))
-    return tasks
+        tasks.append(execute_spark_process(f"spark_etl_{t}_{datareferencia}", task, dag))
 
+    start >> tasks[0]
+    for j in range(0, len(tasks) - 1):
+        tasks[j] >> tasks[j + 1]
+    tasks[len(tasks) - 1] >> wait
 
-for i in range(delta.days + 1):
-    day = sdate + timedelta(days=i)
-    datareferencia = day.strftime("%Y-%m-%d")
+jobs = [
+    {
+        'task_name': 'event-stop-edges',
+        'task': '/spark-urbs-processing/event-stop-edges.py'
+    },
+    {
+        'task_name': 'tracking-data',
+        'task': '/spark-urbs-processing/tracking-data.py'
+    }
+]
 
-    # stopevents = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
-    #              '/spark-urbs-processing/jars/presto-jdbc-0.221.jar  /spark-urbs-processing/stop-events.py -d {}'.format(
-    #     datareferencia)
-    #
-    tracking_data = '/spark/bin/spark-submit --master local[*] --executor-memory 6g --driver-memory 10g --conf spark.network.timeout=600s --driver-class-path ' \
-                    '/spark-urbs-processing/jars/presto-jdbc-0.221.jar  /spark-urbs-processing/tracking-data.py -d {}'.format(
-        datareferencia)
+for job in jobs:
+    tasks = []
 
-    event_stop_edges = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
-                       '/spark-urbs-processing/jars/presto-jdbc-0.221.jar  /spark-urbs-processing/event-stop-edges.py -d {}'.format(
-        datareferencia)
+    spark_submit = "/spark/bin/spark-submit --master local[*]"
+    spark_submit_params = "--executor-memory 6g --driver-memory 10g --conf spark.network.timeout=600s"
 
-    start >> process_etl_queries(datareferencia, dag) >> end
-    # start >> execute_spark_process(f"spark_etl_stop_events-{datareferencia}", stopevents, dag)
-    start >> execute_spark_process(f"spark_etl_event_stop_edges-{datareferencia}", event_stop_edges, dag) >> end
-    start >> execute_spark_process(f"spark_etl_tracking_data-{datareferencia}", tracking_data, dag) >> end
+    for i in range(delta.days + 1):
+        day = sdate + timedelta(days=i)
+        datareferencia = day.strftime("%Y-%m-%d")
+
+        task = f"{spark_submit} {spark_submit_params} {job['task']} -d {datareferencia}"
+        tasks.append(execute_spark_process(f"spark_etl_{job['task_name']}_data-{datareferencia}", task, dag))
+
+    wait >> tasks[0]
+    for j in range(0, len(tasks) - 1):
+        tasks[j] >> tasks[j + 1]
+    tasks[len(tasks) - 1] >> end
