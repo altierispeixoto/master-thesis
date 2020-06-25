@@ -46,7 +46,7 @@ for t in config['etl_tasks']:
 
         filepath = f"data/raw/{base_date}/{folder}/{download_file_day}_{file}"
 
-        spark_submit = "/spark/bin/spark-submit --master local[*] --executor-memory 4g --driver-memory 4g --conf " \
+        spark_submit = "/spark/bin/spark-submit --master local[*] --executor-memory 7g --driver-memory 8g --conf " \
                        "spark.network.timeout=600s "
 
         load_to_processed = f"{spark_submit} /spark-urbs-processing/load_to_processed.py -f {filepath} -t {folder}"

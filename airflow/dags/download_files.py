@@ -7,7 +7,7 @@ from datetime import timedelta, datetime
 import ast
 import yaml
 
-from lib.utils import download_files , decompress_files , delete_files
+from lib.utils import download_files, decompress_files, delete_files
 
 config = yaml.load(open('./dags/config/data.yml'), Loader=yaml.FullLoader)
 
@@ -18,7 +18,7 @@ args = {
     'owner': 'airflow',
     'description': 'Download files for processing',
     'depend_on_past': False,
-    'start_date':  airflow.utils.dates.days_ago(2),
+    'start_date': airflow.utils.dates.days_ago(2),
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 1,
@@ -57,13 +57,12 @@ for t in config['etl_tasks']:
         dag=dag,
     ))
 
-
 delete_staging_files = PythonOperator(
-        task_id= "delete_staging_files",
-        provide_context=True,
-        python_callable=delete_files,
-        dag=dag,
-    )
+    task_id="delete_staging_files",
+    provide_context=True,
+    python_callable=delete_files,
+    dag=dag,
+)
 
 for j in range(0, len(download_tasks)):
     start >> download_tasks[j] >> decompress_tasks[j] >> wait
