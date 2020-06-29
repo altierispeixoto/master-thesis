@@ -1,0 +1,3 @@
+apache-airflow==1.10.10
+neo4j
+PyYAML==5.3.1
