@@ -2,3 +2,4 @@ wget
 pandas
 urllib3
 neo4j
+werkzeug==0.16.0

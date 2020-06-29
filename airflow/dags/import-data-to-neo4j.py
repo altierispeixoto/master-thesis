@@ -29,6 +29,7 @@ args = {
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 1,
+    'pool': 'import-data-to-neo4j',
     'retry_delay': timedelta(minutes=5)
 }
 
