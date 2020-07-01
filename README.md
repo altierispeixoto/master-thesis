@@ -1,5 +1,11 @@
 #### MASTER THESIS
 
+**DAG EXECUTION ORDER**
+1 - download_files
+2 - load-raw-to-processed
+3 - prepare-data-to-neo4j
+
+
 #### **COMPLEX NETWORKS**
 
 ---

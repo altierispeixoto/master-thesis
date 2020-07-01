@@ -1,0 +1,13 @@
+version: '2.1'
+services:
+  spark-master:
+    image: jupyter/pyspark-notebook
+    container_name: jupyterlab
+    ports:
+      - "10000:8888"
+      - "4040:4040"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    volumes:
+      - /work/datalake:/home/jovyan/data
+      - /work/master-thesis/notebooks:/home/jovyan/notebooks
