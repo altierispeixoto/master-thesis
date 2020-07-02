@@ -1,13 +1,14 @@
-version: '2.1'
+version: '3'
 services:
-  spark-master:
-    image: jupyter/pyspark-notebook
-    container_name: jupyterlab
+  jupyterlab:
+    user: root
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: utfpr/jupyterlab
     ports:
       - "10000:8888"
       - "4040:4040"
-    environment:
-      - JUPYTER_ENABLE_LAB=yes
     volumes:
-      - /work/datalake:/home/jovyan/data
-      - /work/master-thesis/notebooks:/home/jovyan/notebooks
+      - /work/master-thesis/notebooks:/opt/work/notebooks/
+      - /work/datalake:/opt/work/data/
