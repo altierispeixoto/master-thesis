@@ -46,6 +46,7 @@ https://kepler.gl/demo/nyctrips
 https://guides.neo4j.com/got
 https://towardsdatascience.com/data-scientists-the-five-graph-algorithms-that-you-should-know-30f454fa5513
 
+https://github.com/uber/h3-py
 
 ---
 &#x27A4; **ARCHITECTURE**
