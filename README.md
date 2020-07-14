@@ -12,12 +12,12 @@
 
 ---
 &#x27A4;  **WEBSITES**
-[COMPLEXITY EXPLORER SANTA FE INSTITUTE](https://www.complexityexplorer.org/) &#x27A2; Offers online courses. 
-[NEW ENGLAND COMPLEX SYSTEMS INSTITUTE](https://necsi.edu/) &#x27A2; provides various resources and papers.  
-[GOING UNDERGROUND: GRAPHING AND PATHFINDING LONDON TUBE LINES](https://neo4j.com/blog/going-underground-graphing-pathfinding-london-tube-lines/) &#x27A2; Describes how to use Neo4j on Public Tranportation
-[THE SEVEN BRIDGES OF KÖNISBERG: A DOG'S EYE VIEW](https://neo4j.com/blog/seven-bridges-of-konigsberg-dogs-eye-view/) &#x27A2; Describes how to use Neo4j on pathfinding
-[D7.2: GES3 Data Integration](https://www.eubra-bigsea.eu/sites/default/files/EUBRra-BIGSEA_D7.2_GES3DataIntegration_v1.pdf) &#x27A2; Document about URBS data integration
-[Coalescing Networks for Performant Graph Analysis](http://kuanbutts.com/2018/04/01/spectral-cluster-transit/) &#x27A2; Explain how to use python and GTFS for creating network transit graphs 
+[COMPLEXITY EXPLORER SANTA FE INSTITUTE](https://www.complexityexplorer.org/) &#x27A2; Offers online courses.   
+[NEW ENGLAND COMPLEX SYSTEMS INSTITUTE](https://necsi.edu/) &#x27A2; provides various resources and papers.    
+[GOING UNDERGROUND: GRAPHING AND PATHFINDING LONDON TUBE LINES](https://neo4j.com/blog/going-underground-graphing-pathfinding-london-tube-lines/) &#x27A2; Describes how to use Neo4j on Public Tranportation  
+[THE SEVEN BRIDGES OF KÖNISBERG: A DOG'S EYE VIEW](https://neo4j.com/blog/seven-bridges-of-konigsberg-dogs-eye-view/) &#x27A2; Describes how to use Neo4j on pathfinding  
+[D7.2: GES3 Data Integration](https://www.eubra-bigsea.eu/sites/default/files/EUBRra-BIGSEA_D7.2_GES3DataIntegration_v1.pdf) &#x27A2; Document about URBS data integration  
+[Coalescing Networks for Performant Graph Analysis](http://kuanbutts.com/2018/04/01/spectral-cluster-transit/) &#x27A2; Explain how to use python and GTFS for creating network transit graphs   
 [Identifying urban zones with spectral clustering](http://kuanbutts.com/2017/10/21/spectral-cluster-berkeley/)
 [Graphs Across Domains](https://graphxd.github.io/): Berkeley GraphXD 
 
@@ -51,7 +51,10 @@ https://towardsdatascience.com/data-scientists-the-five-graph-algorithms-that-yo
 &#x27A4; **ARCHITECTURE**
 
 
-**AIRFLOW - DAG EXECUTION ORDER**
-1 - download_files
-2 - load-raw-to-processed
-3 - prepare-data-to-neo4j
+**AIRFLOW - DAG EXECUTION ORDER**  
+1 - download_files  
+2 - load-raw-to-processed  
+3 - prepare-data-to-neo4j  
+
+---
+https://dillinger.io/
