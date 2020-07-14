@@ -27,6 +27,8 @@
 [Systemic delay propagation in the US airport network](https://www.nature.com/articles/srep01159/)  
 [Hierarchical structure and the prediction of missing links in networks](https://www.nature.com/articles/nature06830)
 
+[T-GCN: A Temporal Graph Convolutional Network for Traffic Prediction](https://arxiv.org/pdf/1811.05320.pdf)
+
 ---
 &#x27A4; **MISCELLANEOUS**
 
