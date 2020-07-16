@@ -52,6 +52,8 @@ https://github.com/uber/h3-py
 
 https://pythonot.github.io/
 
+https://guides.neo4j.com/sandbox/graph-algorithms/
+
 ---
 &#x27A4; **ARCHITECTURE**
 
