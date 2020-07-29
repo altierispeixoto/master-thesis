@@ -26,11 +26,13 @@
 
 [Systemic delay propagation in the US airport network](https://www.nature.com/articles/srep01159/)  
 [Hierarchical structure and the prediction of missing links in networks](https://www.nature.com/articles/nature06830)
-
+[Open Graph Benchmark:Datasets for Machine Learning on Graphs](https://arxiv.org/pdf/2005.00687.pdf)
 [T-GCN: A Temporal Graph Convolutional Network for Traffic Prediction](https://arxiv.org/pdf/1811.05320.pdf)
 
 ---
 &#x27A4; **MISCELLANEOUS**
+
+https://towardsdatascience.com/temporal-graph-networks-ab8f327f2efe
 
 https://medium.com/neo4j/visualizing-shortest-paths-with-neomap-0-4-0-and-the-neo4j-graph-data-science-plugin-18db92f680de
 https://www.stellargraph.io/
@@ -54,6 +56,11 @@ https://pythonot.github.io/
 
 https://guides.neo4j.com/sandbox/graph-algorithms/
 
+https://pytorch-geometric.readthedocs.io/en/latest/#
+
+[DEEP GRAPH LIBRARY : Easy Deep Learning on Graphs](https://www.dgl.ai/)
+
+[Open Graph Benchmark (OGB)](https://ogb.stanford.edu/docs/dataset_overview/)
 ---
 &#x27A4; **ARCHITECTURE**
 
