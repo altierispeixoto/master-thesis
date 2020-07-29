@@ -31,6 +31,8 @@
 
 [Graph Metrics for Temporal Networks](https://arxiv.org/pdf/1306.0493.pdf)
 [Applications of Temporal Graph Metrics to Real-World Networks](https://arxiv.org/pdf/1305.6974.pdf)
+
+[Time-Varying Graphs and Social Network Analysis: Temporal Indicators and Metrics](https://www.labri.fr/perso/acasteig/files/SQFCA11.pdf)
 ---
 &#x27A4; **MISCELLANEOUS**
 
