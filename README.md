@@ -29,6 +29,8 @@
 [Open Graph Benchmark:Datasets for Machine Learning on Graphs](https://arxiv.org/pdf/2005.00687.pdf)
 [T-GCN: A Temporal Graph Convolutional Network for Traffic Prediction](https://arxiv.org/pdf/1811.05320.pdf)
 
+[Graph Metrics for Temporal Networks](https://arxiv.org/pdf/1306.0493.pdf)
+[Applications of Temporal Graph Metrics to Real-World Networks](https://arxiv.org/pdf/1305.6974.pdf)
 ---
 &#x27A4; **MISCELLANEOUS**
 
