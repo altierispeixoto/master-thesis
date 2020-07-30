@@ -39,6 +39,7 @@ def create_flag_status(delta_velocity):
 
 
 def process_raw_events(position_events):
+
     events_filtered = position_events.select('cod_linha', 'veic', 'lat', 'lon',
                                              date_format(unix_timestamp('dthr', 'dd/MM/yyyy HH:mm:ss')
                                                          .cast('timestamp'), "yyyy-MM-dd HH:mm:ss").alias(

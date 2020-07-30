@@ -39,32 +39,6 @@ class ETLSpark:
         df = df.toDF(*[c.lower() for c in df.columns]).drop(*dropcolumns)
         return df
 
-    # @staticmethod
-    # def load_to_database(df, tablename):
-    #     print(df.show(5))
-    #
-    #     db_properties = {}
-    #     db_url = "jdbc:postgresql://10.5.0.3:5432/dw?user=airflow&password=airflow"
-    #     db_properties['username'] = "airflow"
-    #     db_properties['password'] = "airflow"
-    #     db_properties['driver'] = "org.postgresql.Driver"
-    #
-    #     tabletarget = 'public.{}_stg'.format(tablename)
-    #     # Save the dataframe to the table.
-    #     df.write.jdbc(url=db_url, table=tabletarget, mode='overwrite', properties=db_properties)
-
-    # def load_from_database(self, query):
-    #     db_properties = {}
-    #     db_url = "jdbc:postgresql://10.5.0.3:5432/dw?user=airflow&password=airflow"
-    #     db_properties['username'] = "airflow"
-    #     db_properties['password'] = "airflow"
-    #     db_properties['driver'] = "org.postgresql.Driver"
-
-    #     df = self.sqlContext.read.jdbc(url=db_url, table=query, properties=db_properties)
-
-    #     #print(df.show(5))
-    #     return df
-
     def load_spark_sql(self, query):
         self.sqlContext.read.parquet("/data/processed/veiculos").registerTempTable("veiculos")
         self.sqlContext.read.parquet("/data/processed/linhas").registerTempTable("linhas")

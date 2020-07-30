@@ -93,8 +93,7 @@ line_way_events_stop as (
       from stop_events svt
       inner join query_1 tv on (svt.cod_linha = tv.line_code and svt.vehicle = tv.vehicle)
       inner join itinerary it on (svt.cod_linha = it.line_code and tv.start_point = it.start_point and tv.end_point = it.end_point)
-      where --tv.line_code = '666'  and tv.vehicle = 'GN606' and
-          svt.event_time between tv.start_time and tv.end_time
+      where svt.event_time between tv.start_time and tv.end_time
   )
   select line_code
         ,vehicle
