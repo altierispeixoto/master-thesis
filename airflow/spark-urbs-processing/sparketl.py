@@ -21,6 +21,20 @@ class ETLSpark:
         self.sc = SparkContext.getOrCreate(conf=self.conf)
         self.sqlContext = SQLContext(self.sc)
 
+    # def extract(sqlContext, src):
+    #     df = sqlContext.read.json(src).withColumn("filepath", F.input_file_name())
+    #
+    #     split_col = F.split(df['filepath'], '/')
+    #     df = df.withColumn('filename', split_col.getItem(9))
+    #
+    #     split = F.split(df['filename'], '_')
+    #
+    #     df = df.withColumn('year', split.getItem(0))
+    #     df = df.withColumn('month', split.getItem(1))
+    #     df = df.withColumn('day', split.getItem(2))
+    #     return df
+    #
+
     def extract(self, src):
         print(f"FILE: {F.input_file_name()}")
         df = self.sqlContext.read.json(src).withColumn("filepath", F.input_file_name())
@@ -31,12 +45,18 @@ class ETLSpark:
 
         split = F.split(df['filename'], '_')
 
-        df = df.withColumn('datareferencia', F.to_date(
-            F.concat(split.getItem(0), F.lit("-"), split.getItem(1), F.lit("-"),
-                     split.getItem(2)), 'yyyy-MM-dd'))
+        # df = df.withColumn('datareferencia', F.to_date(
+        #     F.concat(split.getItem(0), F.lit("-"), split.getItem(1), F.lit("-"),
+        #              split.getItem(2)), 'yyyy-MM-dd'))
+
+        df = df.withColumn('year', split.getItem(0))
+        df = df.withColumn('month', split.getItem(1))
+        df = df.withColumn('day', split.getItem(2))
+
 
         dropcolumns = ["filepath", "filename"]
         df = df.toDF(*[c.lower() for c in df.columns]).drop(*dropcolumns)
+
         return df
 
     def load_spark_sql(self, query):
