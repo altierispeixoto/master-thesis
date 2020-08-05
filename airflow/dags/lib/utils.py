@@ -1,8 +1,51 @@
-from datetime import timedelta, datetime
-import urllib3
+import lzma
 import os
 import shutil
-import lzma
+from datetime import timedelta, datetime
+
+import urllib3
+from airflow.operators.docker_operator import DockerOperator
+from airflow.operators.dummy_operator import DummyOperator
+from airflow.operators.python_operator import PythonOperator
+
+
+def dummy_task(task_id, dag):
+    dummy = DummyOperator(task_id=task_id, dag=dag)
+    return dummy
+
+
+def docker_task(task_id, command, dag, image='bde2020/spark-master:2.4.4-hadoop2.7', environment='', volumes=[]):
+    if image == 'bde2020/spark-master:2.4.4-hadoop2.7':
+        environment = {
+            'PYSPARK_PYTHON': "python3",
+            'SPARK_HOME': "/spark"
+        }
+        volumes = ['/work/master-thesis/airflow/data-processing:/data-processing', '/work/datalake:/data']
+
+    task = DockerOperator(
+        task_id=task_id,
+        image=image,
+        api_version='auto',
+        auto_remove=True,
+        environment=environment,
+        volumes=volumes,
+        command=command,
+        docker_url='unix://var/run/docker.sock',
+        network_mode='host',
+        dag=dag
+    )
+
+    return task
+
+
+def create_task(task_id, op_kwargs, python_callable, _dag):
+    return PythonOperator(
+        task_id=task_id,
+        provide_context=True,
+        op_kwargs=op_kwargs,
+        python_callable=python_callable,
+        dag=_dag,
+    )
 
 
 def download_files(ds, folder, file, date_range, base_url, **kwargs):

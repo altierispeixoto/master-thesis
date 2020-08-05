@@ -2,10 +2,11 @@ import airflow
 from airflow.models import DAG
 from airflow.models import Variable
 from datetime import timedelta, datetime
-from airflow.operators.docker_operator import DockerOperator
 from airflow.operators.dummy_operator import DummyOperator
 import yaml
 import ast
+
+from lib.utils import docker_task
 
 DEFAULT_ARGS = {
     'owner': 'airflow',
@@ -25,30 +26,11 @@ edate = datetime.strptime(date_range['date_end'], "%Y-%m-%d")
 delta = edate - sdate
 
 """Build DAG."""
-dag = DAG('prepare-data-to-neo4j', default_args=DEFAULT_ARGS, schedule_interval=None, catchup=False, max_active_runs=2)
+dag = DAG('prepare-data-to-neo4j', default_args=DEFAULT_ARGS, schedule_interval=None, catchup=False)
 start = DummyOperator(task_id='start', dag=dag)
 end = DummyOperator(task_id='end', dag=dag)
 
 spark_load_from_pg = []
-
-
-def execute_spark_process(task_id, command, dag):
-    task = DockerOperator(
-        task_id=task_id,
-        image='bde2020/spark-master:2.4.4-hadoop2.7',
-        api_version='auto',
-        auto_remove=True,
-        environment={
-            'PYSPARK_PYTHON': "python3",
-            'SPARK_HOME': "/spark"
-        },
-        volumes=['/work/master-thesis/airflow/spark-urbs-processing:/spark-urbs-processing', '/work/datalake:/data'],
-        command=command,
-        docker_url='unix://var/run/docker.sock',
-        network_mode='host', dag=dag
-    )
-
-    return task
 
 
 for t in config['etl_queries']:
@@ -63,9 +45,9 @@ for t in config['etl_queries']:
         datareferencia = day.strftime("%Y-%m-%d")
 
         query = query.format(datareferencia=datareferencia)
-        task = f" {spark_submit} {spark_submit_params} /spark-urbs-processing/load_from_prestodb.py -q \"{query}\" -f {t} -d {datareferencia}"
+        task = f" {spark_submit} {spark_submit_params} /data-processing/load_from_prestodb.py -q \"{query}\" -f {t} -d {datareferencia}"
 
-        tasks.append(execute_spark_process(f"spark_etl_{t}_{datareferencia}", task, dag))
+        tasks.append(docker_task(f"spark_etl_{t}_{datareferencia}", task, dag))
 
     start >> tasks[0]
     for j in range(0, len(tasks) - 1):
@@ -75,11 +57,11 @@ for t in config['etl_queries']:
 jobs = [
     {
         'task_name': 'event-stop-edges',
-        'task': '/spark-urbs-processing/event-stop-edges.py'
+        'task': '/data-processing/event-stop-edges.py'
     },
     {
         'task_name': 'tracking-data',
-        'task': '/spark-urbs-processing/tracking-data.py'
+        'task': '/data-processing/tracking-data.py'
     }
 ]
 
@@ -94,7 +76,7 @@ for job in jobs:
         datareferencia = day.strftime("%Y-%m-%d")
 
         task = f"{spark_submit} {spark_submit_params} {job['task']} -d {datareferencia}"
-        tasks.append(execute_spark_process(f"spark_etl_{job['task_name']}_data-{datareferencia}", task, dag))
+        tasks.append(docker_task(f"spark_etl_{job['task_name']}_data-{datareferencia}", task, dag))
 
     start >> tasks[0]
     for j in range(0, len(tasks) - 1):

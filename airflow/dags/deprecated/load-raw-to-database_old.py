@@ -54,7 +54,7 @@ for t in config['etl_tasks']:
 
 
         load_to_pg = '/spark/bin/spark-submit --master local[*] --driver-class-path ' \
-                        '/spark-urbs-processing/jars/postgresql-42.2.8.jar  /spark-urbs-processing/load_to_postgresql.py -f {} -t {}' \
+                        '/data-processing/jars/postgresql-42.2.8.jar  /data-processing/load_to_postgresql.py -f {} -t {}' \
             .format(filepath, folder)
 
         spark_load_to_pg.append(DockerOperator(
@@ -66,7 +66,7 @@ for t in config['etl_tasks']:
                 'PYSPARK_PYTHON': "python3",
                 'SPARK_HOME': "/spark"
             },
-            volumes=['/mestrado/master-thesis/airflow/spark-urbs-processing:/spark-urbs-processing'
+            volumes=['/mestrado/master-thesis/airflow/data-processing:/data-processing'
                 , '/mestrado/master-thesis/airflow/data:/data'],
             command=load_to_pg,
             docker_url='unix://var/run/docker.sock',

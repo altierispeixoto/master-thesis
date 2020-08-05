@@ -9,7 +9,7 @@ services:
     environment:
       - INIT_DAEMON_STEP=setup_spark
     volumes:
-      - ./spark-urbs-processing:/spark-urbs-processing
+      - ./data-processing:/data-processing
       - /work/datalake:/data
   spark-worker-1:
     image: altr/spark
@@ -21,5 +21,5 @@ services:
     environment:
       - "SPARK_MASTER=spark://spark-master:7077"
     volumes:
-      - ./spark-urbs-processing:/spark-urbs-processing
+      - ./data-processing:/data-processing
       - /work/datalake:/data

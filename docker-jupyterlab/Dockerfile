@@ -36,23 +36,7 @@ RUN pip install jupyterlab && \
     rm -rf $HOME/.local && \
     fix-permissions $CONDA_DIR $HOME
 
-#    jupyter labextension install bqplot --no-build && \
-#    jupyter labextension install @jupyterlab/vega3-extension --no-build && \
-#    jupyter labextension install @jupyterlab/git --no-build && \
-#    jupyter labextension install @jupyterlab/hub-extension --no-build && \
-#    jupyter labextension install jupyterlab_tensorboard --no-build && \
-#    jupyter labextension install jupyterlab-kernelspy --no-build && \
-#    jupyter labextension install jupyterlab-chart-editor --no-build && \
-#    jupyter labextension install plotlywidget --no-build && \
-#    jupyter labextension install @jupyterlab/latex --no-build && \
-#    jupyter labextension install jupyter-matplotlib --no-build && \
-#    jupyter labextension install jupyterlab-drawio --no-build && \
-#    jupyter labextension install jupyter-leaflet --no-build && \
-#    jupyter labextension install qgrid --no-build && \
-
-
 USER root
 COPY ./docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 ENTRYPOINT ["/docker-entrypoint.sh"]
-#RUN echo 'c.NotebookApp.contents_manager_class = "notedown.NotedownContentsManager"' >> ~/.jupyter/jupyter_notebook_config.py
