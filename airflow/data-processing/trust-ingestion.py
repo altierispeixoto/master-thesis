@@ -1,4 +1,5 @@
 import pyspark.sql.functions as F
+from pyspark.sql import DataFrame
 from sparketl import ETLSpark
 
 
@@ -8,7 +9,21 @@ class TrustProcessing:
         self.etlspark = ETLSpark()
 
     def perform(self):
-        self.etlspark.sqlContext.read.json("/data/raw/2020-05/veiculos") \
+        vehicles = self.vehicles_ingestion("2020-05")
+        self.save(vehicles, "/data/trusted/vehicles")
+
+        timetable = self.timetable_ingestion("2020-05")
+        self.save(timetable, "/data/trusted/timetable")
+
+        busstops = self.bustops_ingestion("2020-05")
+        self.save(busstops, "/data/trusted/busstops")
+
+        lines = self.lines_ingestion("2020-05")
+        self.save(lines, "/data/trusted/lines")
+        
+
+    def vehicles_ingestion(self, period: str):
+        return self.etlspark.sqlContext.read.json(f"/data/raw/{period}/veiculos") \
             .select(F.col("COD_LINHA").alias("line_code"),
                     F.date_format(F.unix_timestamp('dthr', 'dd/MM/yyyy HH:mm:ss').cast('timestamp'),
                                   "yyyy-MM-dd HH:mm:ss").alias('event_timestamp'),
@@ -18,24 +33,21 @@ class TrustProcessing:
                     ) \
             .withColumn("year", F.year("event_timestamp")) \
             .withColumn("month", F.month("event_timestamp")) \
-            .withColumn("day", F.dayofmonth("event_timestamp")).dropDuplicates().coalesce(10) \
-            .write.mode('overwrite') \
-            .partitionBy("year", "month", "day") \
-            .format("parquet") \
-            .save("/data/trusted/vehicles")
+            .withColumn("day", F.dayofmonth("event_timestamp")) \
+            .dropDuplicates()
 
-        self.etlspark.extract("/data/raw/2020-05/linhas") \
+    def lines_ingestion(self, period: str) -> DataFrame:
+        return self.etlspark.extract(f"/data/raw/{period}/linhas") \
             .withColumn("service_category", F.col("categoria_servico")) \
             .withColumn("line_name", F.col("nome")) \
             .withColumn("line_code", F.col("cod")) \
             .withColumn("color", F.col("nome_cor")) \
             .withColumn("card_only", F.col("somente_cartao")) \
             .drop("categoria_servico", "cod", "nome", "nome_cor", "somente_cartao") \
-            .dropDuplicates().coalesce(1).write.mode('overwrite') \
-            .partitionBy("year", "month", "day") \
-            .format("parquet").save("/data/trusted/lines")
+            .dropDuplicates()
 
-        self.etlspark.extract("/data/raw/2020-05/pontoslinha") \
+    def bustops_ingestion(self, period: str) -> DataFrame:
+        return self.etlspark.extract(f"/data/raw/{period}/pontoslinha") \
             .withColumn("line_code", F.col("cod")) \
             .withColumn("latitude", F.col("lat")) \
             .withColumn("longitude", F.col("lon")) \
@@ -45,11 +57,10 @@ class TrustProcessing:
             .withColumn("seq", F.col("seq")) \
             .withColumn("type", F.col("tipo")) \
             .drop("GRUPO", "cod", "lat", "lon", "nome", "num", "sentido", "tipo") \
-            .dropDuplicates().coalesce(1).write.mode('overwrite') \
-            .partitionBy("year", "month", "day") \
-            .format("parquet").save("/data/trusted/busstops")
+            .dropDuplicates()
 
-        self.etlspark.extract("/data/raw/2020-05/tabelaveiculo") \
+    def timetable_ingestion(self, period: str) -> DataFrame:
+        return self.etlspark.extract(f"/data/raw/{period}/tabelaveiculo") \
             .withColumn("line_code", F.col("cod_linha")) \
             .withColumn("line_name", F.col("nome_linha")) \
             .withColumn("busstop_number", F.col("cod_ponto")) \
@@ -57,9 +68,12 @@ class TrustProcessing:
             .withColumn("timetable", F.col("tabela")) \
             .withColumn("vehicle", F.col("veiculo")) \
             .drop("cod_linha", "cod_ponto", "horario", "nome_linha", "tabela", "veiculo") \
-            .dropDuplicates().coalesce(1).write.mode('overwrite') \
+            .dropDuplicates()
+
+    def save(self, df: DataFrame, output: str):
+        df.coalesce(1).write.mode('overwrite') \
             .partitionBy("year", "month", "day") \
-            .format("parquet").save("/data/trusted/timetable")
+            .format("parquet").save(output)
 
 
 job = TrustProcessing()

@@ -26,74 +26,74 @@ etl_tasks:
     file: veiculos.json.xz
 
 etl_queries:
-  lines:
-      "
-          select distinct cod,
-                        categoria_servico,
-                        nome,
-                        nome_cor,
-                        somente_cartao,
-                        year,
-                        month,
-                        day
-                    from (
-                        select l.cod,
-                            l.categoria_servico,
-                            l.nome,
-                            l.nome_cor,
-                            l.somente_cartao,
-                            v.year as year,
-                            v.month as month,
-                            v.day as day
-                        from veiculos v
-                          right join linhas l on (v.cod_linha = l.cod and l.year = v.year and l.month = v.month  and l.day = v.day)
-                           where  l.year = year('{datareferencia}')
-                             and l.month = month('{datareferencia}')
-                             and l.day = dayofmonth('{datareferencia}')
-                          ) t
-          order by cod, year, month, day
-  "
+#  lines:
+#      "
+#          select distinct cod,
+#                        categoria_servico,
+#                        nome,
+#                        nome_cor,
+#                        somente_cartao,
+#                        year,
+#                        month,
+#                        day
+#                    from (
+#                        select l.cod,
+#                            l.categoria_servico,
+#                            l.nome,
+#                            l.nome_cor,
+#                            l.somente_cartao,
+#                            v.year as year,
+#                            v.month as month,
+#                            v.day as day
+#                        from veiculos v
+#                          right join linhas l on (v.cod_linha = l.cod and l.year = v.year and l.month = v.month  and l.day = v.day)
+#                           where  l.year = year('{datareferencia}')
+#                             and l.month = month('{datareferencia}')
+#                             and l.day = dayofmonth('{datareferencia}')
+#                          ) t
+#          order by cod, year, month, day
+#  "
 
-  busstops:
-      "   with linhas as (
-                          select  distinct cod,
-                                  categoria_servico,
-                                  nome,
-                                  nome_cor,
-                                  somente_cartao,
-                                  year,
-                                  month,
-                                  day
-                          from (
-                              select l.cod,
-                                  l.categoria_servico,
-                                  l.nome,
-                                  l.nome_cor,
-                                  l.somente_cartao,
-                                  v.year as year,
-                                  v.month as month,
-                                  v.day as day
-                              from veiculos v
-                              right join linhas l on (v.cod_linha = l.cod and l.year = v.year and l.month = v.month  and l.day = v.day)
-                                   where  l.year = year('{datareferencia}')
-                             and l.month = month('{datareferencia}')
-                             and l.day = dayofmonth('{datareferencia}')
-                            ) as l
-                          )
-                          select distinct
-                              pl.cod as cod_linha
-                             ,pl.nome
-                             ,pl.num
-                             ,pl.tipo
-                             ,pl.lat
-                             ,pl.lon
-                             ,pl.sentido as sentido_linha
-                             ,l.year
-                             ,l.month
-                             ,l.day
-                          from     pontoslinha	pl
-                          inner join linhas l on (pl.cod = l.cod and l.year = pl.year and l.month = pl.month  and l.day = pl.day )
-     "
+#  busstops:
+#      "   with linhas as (
+#                          select  distinct cod,
+#                                  categoria_servico,
+#                                  nome,
+#                                  nome_cor,
+#                                  somente_cartao,
+#                                  year,
+#                                  month,
+#                                  day
+#                          from (
+#                              select l.cod,
+#                                  l.categoria_servico,
+#                                  l.nome,
+#                                  l.nome_cor,
+#                                  l.somente_cartao,
+#                                  v.year as year,
+#                                  v.month as month,
+#                                  v.day as day
+#                              from veiculos v
+#                              right join linhas l on (v.cod_linha = l.cod and l.year = v.year and l.month = v.month  and l.day = v.day)
+#                                   where  l.year = year('{datareferencia}')
+#                             and l.month = month('{datareferencia}')
+#                             and l.day = dayofmonth('{datareferencia}')
+#                            ) as l
+#                          )
+#                          select distinct
+#                              pl.cod as cod_linha
+#                             ,pl.nome
+#                             ,pl.num
+#                             ,pl.tipo
+#                             ,pl.lat
+#                             ,pl.lon
+#                             ,pl.sentido as sentido_linha
+#                             ,l.year
+#                             ,l.month
+#                             ,l.day
+#                          from     pontoslinha	pl
+#                          inner join linhas l on (pl.cod = l.cod and l.year = pl.year and l.month = pl.month  and l.day = pl.day )
+#     "
 
   routes: "
           with vlinhas as (
