@@ -9,20 +9,21 @@ from sparketl import ETLSpark
 
 
 @F.udf(returnType=T.StringType())
-def create_flag_status(delta_velocity):
-    if delta_velocity is not None and delta_velocity > 15:
-        return 'MOVING'
-    else:
-        return 'STOPPED'
+def create_flag_status(dv: float) -> str:
+    return 'MOVING' if dv is not None and dv > 15 else 'STOPPED'
 
 
 @F.udf(returnType=T.DoubleType())
-def delta_velocity(delta_distance, delta_time):
-    return (delta_distance / delta_time) * 3.6
+def delta_velocity(delta_distance: float, delta_time: float) -> float:
+    try:
+        return (delta_distance / delta_time) * 3.6 if (
+                delta_distance is not None and delta_time is not None and delta_time > 0) else 0
+    except TypeError:
+        print(f"delta_distance: {delta_distance} , delta_time: {delta_time}")
 
 
 @F.udf(returnType=T.DoubleType())
-def haversine(lon1, lat1, lon2, lat2):
+def haversine(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
     try:
         lon1, lat1 = lon1, lat1
         lon2, lat2 = lon2, lat2
@@ -229,8 +230,8 @@ class TrackingDataRefinedProcess:
 
     def compute_metrics(self) -> DataFrame:
         window_spec = (
-            Window.partitionBy(self.df.line_code, self.df.vehicle, self.df.year, self.df.month, self.df.day).orderBy(
-                self.df.event_timestamp))
+            Window.partitionBy(self.df.line_code, self.df.vehicle, self.df.year, self.df.month, self.df.day)
+                .orderBy(self.df.event_timestamp))
 
         events = (self.df.withColumn("last_timestamp", F.lag(F.col('event_timestamp'), 1, 0).over(window_spec))
                   .withColumn("last_latitude", F.lag(F.col('latitude'), 1, 0).over(window_spec))
@@ -248,6 +249,7 @@ class TrackingDataRefinedProcess:
                             .orderBy('event_timestamp'))
 
         return events_processed
+
 
     @staticmethod
     def save(df: DataFrame, output: str):
