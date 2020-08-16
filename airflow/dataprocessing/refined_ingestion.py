@@ -219,6 +219,9 @@ class TrackingDataRefinedProcess:
         vehicles = self.compute_metrics()
         self.save(vehicles, "/data/refined/vehicles")
 
+        stop_events = self.stop_events(vehicles)
+        self.save(stop_events, "/data/refined/stop_events")
+
     def __call__(self, *args, **kwargs):
         self.perform()
 
@@ -250,6 +253,18 @@ class TrackingDataRefinedProcess:
 
         return events_processed
 
+    def stop_events(self, df):
+        return (df.filter(F.col("moving_status") == 'STOPPED')
+                .select(F.col("line_code"),
+                        F.col("vehicle"),
+                        F.col("event_timestamp").alias("stop_timestamp"),
+                        F.col("year"),
+                        F.col("month"),
+                        F.col("day"),
+                        F.col("hour"),
+                        F.col("latitude"),
+                        F.col("longitude")).sort(F.col("vehicle"), F.col("event_timestamp"))
+                )
 
     @staticmethod
     def save(df: DataFrame, output: str):
