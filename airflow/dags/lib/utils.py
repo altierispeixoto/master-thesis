@@ -20,7 +20,7 @@ def docker_task(task_id, command, dag, image='bde2020/spark-master:2.4.4-hadoop2
             'PYSPARK_PYTHON': "python3",
             'SPARK_HOME': "/spark"
         }
-        volumes = ['/work/master-thesis/airflow/data-processing:/data-processing', '/work/datalake:/data']
+        volumes = ['/work/master-thesis/airflow/dataprocessing:/dataprocessing', '/work/datalake:/data']
 
     task = DockerOperator(
         task_id=task_id,

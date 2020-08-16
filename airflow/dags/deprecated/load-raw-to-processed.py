@@ -49,7 +49,7 @@ for t in config['etl_tasks']:
         spark_submit = "/spark/bin/spark-submit --master local[*] --executor-memory 7g --driver-memory 8g --conf " \
                        "spark.network.timeout=600s "
 
-        load_to_processed = f"{spark_submit} /data-processing/load_to_processed.py -f {filepath} -t {folder}"
+        load_to_processed = f"{spark_submit} /dataprocessing/load_to_processed.py -f {filepath} -t {folder}"
         print(load_to_processed)
 
         transform_to_parquet.append(DockerOperator(
@@ -61,7 +61,7 @@ for t in config['etl_tasks']:
                 'PYSPARK_PYTHON': "python3",
                 'SPARK_HOME': "/spark"
             },
-            volumes=['/work/master-thesis/airflow/data-processing:/data-processing',
+            volumes=['/work/master-thesis/airflow/dataprocessing:/dataprocessing',
                      '/work/datalake:/data'],
             command=load_to_processed,
             docker_url='unix://var/run/docker.sock',

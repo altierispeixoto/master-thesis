@@ -45,7 +45,7 @@ for t in config['etl_queries']:
         datareferencia = day.strftime("%Y-%m-%d")
 
         query = query.format(datareferencia=datareferencia)
-        task = f" {spark_submit} {spark_submit_params} /data-processing/load_from_prestodb.py -q \"{query}\" -f {t} -d {datareferencia}"
+        task = f" {spark_submit} {spark_submit_params} /dataprocessing/load_from_prestodb.py -q \"{query}\" -f {t} -d {datareferencia}"
 
         tasks.append(docker_task(f"spark_etl_{t}_{datareferencia}", task, dag))
 
@@ -57,11 +57,11 @@ for t in config['etl_queries']:
 jobs = [
     {
         'task_name': 'event-stop-edges',
-        'task': '/data-processing/event-stop-edges.py'
+        'task': '/dataprocessing/event-stop-edges.py'
     },
     {
         'task_name': 'tracking-data',
-        'task': '/data-processing/tracking-data.py'
+        'task': '/dataprocessing/tracking-data.py'
     }
 ]
 
