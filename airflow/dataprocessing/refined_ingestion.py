@@ -273,7 +273,7 @@ class TrackingDataRefinedProcess:
          .format("csv").save(output))
 
 
-# LineRefinedProcess()()
-# BusStopRefinedProcess()()
-# TimetableRefinedProcess()()
+LineRefinedProcess()()
+BusStopRefinedProcess()()
+TimetableRefinedProcess()()
 TrackingDataRefinedProcess()()

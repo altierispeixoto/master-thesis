@@ -336,24 +336,24 @@ etl_queries:
 #                where te.sentido is not null
 #    "
 
-  stopevents: "
-    select  v.cod_linha,
-            v.veic as vehicle,
-            v.event_timestamp as stop_timestamp,
-            v.year,
-            v.month,
-            v.day,
-            v.hour,
-            v.lat as latitude,
-            v.lon as longitude,
-            date_format(v.event_timestamp, 'HH:mm:ss') as event_time
-      from veiculos v
-      where v.moving_status = 'STOPPED'
-        and v.year  = year('{datareferencia}')
-        and v.month = month('{datareferencia}')
-        and v.day   = dayofmonth('{datareferencia}')
-        order by vehicle, event_timestamp
-    "
+#  stopevents: "
+#    select  v.cod_linha,
+#            v.veic as vehicle,
+#            v.event_timestamp as stop_timestamp,
+#            v.year,
+#            v.month,
+#            v.day,
+#            v.hour,
+#            v.lat as latitude,
+#            v.lon as longitude,
+#            date_format(v.event_timestamp, 'HH:mm:ss') as event_time
+#      from veiculos v
+#      where v.moving_status = 'STOPPED'
+#        and v.year  = year('{datareferencia}')
+#        and v.month = month('{datareferencia}')
+#        and v.day   = dayofmonth('{datareferencia}')
+#        order by vehicle, event_timestamp
+#    "
 
 neo4j_import:
   lines:
@@ -476,4 +476,3 @@ neo4j_import:
       MATCH (s0:Stop {line_code: row.cod_linha, vehicle:row.veic, event_timestamp:row.last_stop}), (s1:Stop {line_code: row.cod_linha, vehicle:row.veic, event_timestamp:row.current_stop})
       create (s0)-[m:MOVED_TO {delta_time: row.delta_time, delta_distance: row.delta_distance, delta_velocity:row.delta_velocity}]->(s1)
 
-  
