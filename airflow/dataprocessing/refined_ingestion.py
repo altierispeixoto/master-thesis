@@ -102,18 +102,31 @@ class TimetableRefinedProcess:
                 .filter(f"year =='{year}' and month=='{month}' and day=='{day}'"))
 
     def timetable(self) -> DataFrame:
-        return (self.df.withColumn('end_time', F.lead('time').over(
-            Window.partitionBy('line_code', 'timetable', 'vehicle').orderBy('line_code', 'time')))
-                .withColumn('end_point', F.lead('busstop_number').over(
-            Window.partitionBy('line_code', 'timetable', 'vehicle').orderBy('line_code', 'time')))
-                .select('line_code', F.col('busstop_number').alias('start_point'), F.col('time').alias('start_time'),
-                        'timetable', 'vehicle', 'end_time', 'end_point', "year", "month", "day")
+        return (self.df.withColumn('end_time', F.lead('time')
+                                   .over(
+            Window.partitionBy('line_code', 'timetable', 'vehicle')
+                .orderBy('line_code', 'time')))
+                .withColumn('end_point', F.lead('busstop_number')
+                            .over(
+            Window.partitionBy('line_code', 'timetable', 'vehicle')
+                .orderBy('line_code', 'time')))
+                .select(
+            'line_code',
+            F.col('busstop_number').alias('start_point'),
+            F.col('time').alias('start_time'),
+            'timetable',
+            'vehicle',
+            'end_time',
+            'end_point',
+            "year",
+            "month",
+            "day"
+        )
                 .orderBy('line_code', 'time'))
 
     def trips(self):
         bs = BusStopRefinedProcess()
         trip_endpoints = bs.trip_endpoints().drop("year", "month", "day")
-        print(trip_endpoints.show(3))
 
         return (self.timetable()
                 .join(trip_endpoints, ['line_code', 'start_point', 'end_point'], how='left')
@@ -217,10 +230,12 @@ class TrackingDataRefinedProcess:
 
     def perform(self):
         vehicles = self.compute_metrics()
-        self.save(vehicles, "/data/refined/vehicles")
+        # self.save(vehicles, "/data/refined/vehicles")
 
         stop_events = self.stop_events(vehicles)
-        self.save(stop_events, "/data/refined/stop_events")
+        # self.save(stop_events, "/data/refined/stop_events")
+        event_stop_edges = self.event_stop_edges(stop_events)
+        self.save(event_stop_edges, "/data/refined/event_stop_edges")
 
     def __call__(self, *args, **kwargs):
         self.perform()
@@ -263,17 +278,35 @@ class TrackingDataRefinedProcess:
                         F.col("day"),
                         F.col("hour"),
                         F.col("latitude"),
-                        F.col("longitude")).sort(F.col("vehicle"), F.col("event_timestamp"))
+                        F.col("longitude")
+                        )
+                .sort(F.col("vehicle"), F.col("event_timestamp"))
                 )
+
+    def event_stop_edges(self, stop_events):
+        trips = TimetableRefinedProcess().trips().drop("year", "month", "day")
+        bus_stops = BusStopRefinedProcess().bus_stops().drop("year", "month", "day")
+        bus_stops = bus_stops.withColumnRenamed("latitude", "bus_stop_latitude").withColumnRenamed("longitude",
+                                                                                                   "bus_stop_longitude")
+        stop_events = (
+            stop_events.withColumn("event_time", F.date_format(F.col("stop_timestamp"), 'HH:mm:ss')).alias("se")
+                .join(trips.alias("tr"), ["line_code", "vehicle"]).filter(
+                F.col("event_time").between(F.col("start_time"), F.col("end_time"))))
+
+        return (stop_events.alias("se").join(bus_stops.alias("bs"), ["line_code", "line_way"])
+                .withColumn("distance",
+                            haversine(F.col('se.longitude'), F.col('se.latitude'), F.col('bs.bus_stop_longitude'),
+                                      F.col('bs.bus_stop_latitude')))
+                .filter("distance < 60"))
 
     @staticmethod
     def save(df: DataFrame, output: str):
-        (df.coalesce(1).write.mode('overwrite').option("header", True)
+        (df.coalesce(10).write.mode('overwrite').option("header", True)
          .partitionBy("year", "month", "day")
          .format("csv").save(output))
 
 
-LineRefinedProcess()()
-BusStopRefinedProcess()()
-TimetableRefinedProcess()()
+# LineRefinedProcess()()
+# BusStopRefinedProcess()()
+# TimetableRefinedProcess()()
 TrackingDataRefinedProcess()()
