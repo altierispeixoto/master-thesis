@@ -25,7 +25,7 @@ args = {
 
 dag = DAG(dag_id='test-ingestion', default_args=args, schedule_interval=None, catchup=False)
 
-spark_submit = "/spark/bin/spark-submit --master local[*] --executor-memory 10g --driver-memory 10g --conf " \
+spark_submit = "/spark/bin/spark-submit --master local[*] --executor-memory 20g --driver-memory 20g --conf " \
                "spark.network.timeout=600s "
 
 load_to_processed = f"{spark_submit} /dataprocessing/refined_ingestion.py "

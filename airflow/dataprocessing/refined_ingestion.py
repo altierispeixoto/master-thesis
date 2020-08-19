@@ -25,8 +25,6 @@ def delta_velocity(delta_distance: float, delta_time: float) -> float:
 @F.udf(returnType=T.DoubleType())
 def haversine(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
     try:
-        lon1, lat1 = lon1, lat1
-        lon2, lat2 = lon2, lat2
 
         R: int = 6371000  # radius of Earth in meters
         phi_1 = math.radians(lat1)
@@ -40,7 +38,8 @@ def haversine(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
 
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
         return R * c  # output distance in meters
-    except:
+    except Exception as err:
+        print(f"Exception has been occurred :{err}")
         print(f"lon1: {lon1} lat1: {lat1} lon2: {lon2} lat2: {lat2}")
 
 
@@ -226,7 +225,7 @@ class TrackingDataRefinedProcess:
 
     def filter_data(self, year: str, month: str, day: str) -> DataFrame:
         return (self.etl_spark.sqlContext.read.parquet("/data/trusted/vehicles")
-                .filter(f"year =='{year}' and month=='{month}' and day=='{day}'"))
+                .filter(f"year =='{year}' and month=='{month}' and day=='{day}'")).limit(10000)
 
     def perform(self):
         vehicles = self.compute_metrics()
@@ -295,9 +294,11 @@ class TrackingDataRefinedProcess:
 
         return (stop_events.alias("se").join(bus_stops.alias("bs"), ["line_code", "line_way"])
                 .withColumn("distance",
-                            haversine(F.col('se.longitude'), F.col('se.latitude'), F.col('bs.bus_stop_longitude'),
-                                      F.col('bs.bus_stop_latitude')))
-                .filter("distance < 60"))
+                            haversine(F.col('se.longitude').cast(T.DoubleType()),
+                                      F.col('se.latitude').cast(T.DoubleType()),
+                                      F.col('bs.bus_stop_longitude').cast(T.DoubleType()),
+                                      F.col('bs.bus_stop_latitude').cast(T.DoubleType())))
+                .filter(F.col("distance") < 60))
 
     @staticmethod
     def save(df: DataFrame, output: str):

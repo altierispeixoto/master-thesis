@@ -16,7 +16,7 @@ query = f"""
   with
   pontos_linha as (
      select * 
-       from pontoslinha 
+       from pontoslBuinha 
        where  year = year('{datareferencia}')
          and  month= month('{datareferencia}')
          and  day = dayofmonth('{datareferencia}')
