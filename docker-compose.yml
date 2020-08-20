@@ -1,0 +1,16 @@
+version: '3.1'
+
+services:
+  jupyterlab:
+    container_name: jupytertab
+    restart: always
+    user: root
+    build: .
+    image: utfpr/jupyterlab:latest
+    working_dir: /opt/master-thesis/
+    ports:
+      - 8085:8085
+      - 4040:4040
+    volumes:
+      - .:/opt/master-thesis/
+      - /work/datalake:/data/

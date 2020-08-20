@@ -10,5 +10,5 @@ services:
       - "10000:8888"
       - "4040:4040"
     volumes:
-      - /work/master-thesis/notebooks:/opt/work/notebooks/
+      - /work/master-thesis:/opt/work/
       - /work/datalake:/opt/work/data/

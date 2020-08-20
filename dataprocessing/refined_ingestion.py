@@ -5,7 +5,7 @@ import pyspark.sql.types as T
 from pyspark.sql import DataFrame
 from pyspark.sql.window import Window
 
-from sparketl import ETLSpark
+from .sparketl import ETLSpark
 
 
 @F.udf(returnType=T.StringType())
@@ -225,13 +225,13 @@ class TrackingDataRefinedProcess:
 
     def filter_data(self, year: str, month: str, day: str) -> DataFrame:
         return (self.etl_spark.sqlContext.read.parquet("/data/trusted/vehicles")
-                .filter(f"year =='{year}' and month=='{month}' and day=='{day}'")).limit(10000)
+                .filter(f"year =='{year}' and month=='{month}' and day=='{day}'"))
 
     def perform(self):
         vehicles = self.compute_metrics()
         # self.save(vehicles, "/data/refined/vehicles")
 
-        stop_events = self.stop_events(vehicles)
+        stop_events = self.stop_events(vehicles).limit(1000)
         # self.save(stop_events, "/data/refined/stop_events")
         event_stop_edges = self.event_stop_edges(stop_events)
         self.save(event_stop_edges, "/data/refined/event_stop_edges")
@@ -292,7 +292,7 @@ class TrackingDataRefinedProcess:
                 .join(trips.alias("tr"), ["line_code", "vehicle"]).filter(
                 F.col("event_time").between(F.col("start_time"), F.col("end_time"))))
 
-        return (stop_events.alias("se").join(bus_stops.alias("bs"), ["line_code", "line_way"])
+        return (stop_events.alias("se").join(bus_stops.alias("bs"), ["line_code", "line_way"],'inner')
                 .withColumn("distance",
                             haversine(F.col('se.longitude').cast(T.DoubleType()),
                                       F.col('se.latitude').cast(T.DoubleType()),
@@ -310,4 +310,4 @@ class TrackingDataRefinedProcess:
 # LineRefinedProcess()()
 # BusStopRefinedProcess()()
 # TimetableRefinedProcess()()
-TrackingDataRefinedProcess()()
+#TrackingDataRefinedProcess()()

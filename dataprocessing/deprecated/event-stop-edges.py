@@ -147,7 +147,8 @@ events = events.withColumn("distance",
             apply_haversine(F.col('longitude').cast('double'), F.col('latitude').cast('double'), F.col('busstop_longitude').cast('double'), F.col('busstop_latitude').cast('double'))) \
             .filter("distance < 60")
 
-evt = events.select(["line_code", "latitude", "longitude", "vehicle", "event_time", "line_way", "bus_stop_number"])
+evt = events.select(
+    ["line_code", "latitude", "longitude", "vehicle", "event_time", "line_way", "bus_stop_number"])
 
 target_path = f"/data/neo4j/event-stop-edges/{datareferencia}"
 etlspark.save(evt, target_path, coalesce=1, format="csv")
