@@ -1,4 +1,4 @@
-from sparketl import ETLSpark
+from processors.sparketl import ETLSpark
 
 etlspark = ETLSpark()
 from argparse import ArgumentParser

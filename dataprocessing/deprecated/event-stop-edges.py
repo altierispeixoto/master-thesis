@@ -1,6 +1,6 @@
 import pyspark.sql.functions as F
-from pyspark.sql.types import DoubleType, StringType
-from sparketl import ETLSpark
+from pyspark.sql.types import DoubleType
+from processors.sparketl import ETLSpark
 from argparse import ArgumentParser
 etlspark = ETLSpark()
 

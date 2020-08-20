@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from sparketl import ETLSpark
+from processors.sparketl import ETLSpark
 from pyspark.sql.window import Window
 from pyspark.sql.functions import *
 from pyspark.sql.types import DoubleType, StringType

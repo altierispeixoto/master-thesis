@@ -28,6 +28,6 @@ dag = DAG(dag_id='trust-ingestion', default_args=args, schedule_interval=None, c
 spark_submit = "/spark/bin/spark-submit --master local[*] --executor-memory 7g --driver-memory 8g --conf " \
                "spark.network.timeout=600s "
 
-load_to_processed = f"{spark_submit} /dataprocessing/trust-ingestion.py "
+load_to_processed = f"{spark_submit} /dataprocessing/job/trust_ingestion.py "
 
 dummy_task("start", dag=dag) >> docker_task(f"trust_ingestion", command=load_to_processed, dag=dag) >> dummy_task("end", dag=dag)
