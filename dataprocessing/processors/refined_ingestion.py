@@ -16,7 +16,7 @@ def create_flag_status(dv: float) -> str:
 @F.udf(returnType=T.DoubleType())
 def delta_velocity(delta_distance: float, delta_time: float) -> float:
     try:
-        return (delta_distance / delta_time) * 3.6 if (
+        return round((delta_distance / delta_time) * 3.6, 2) if (
                 delta_distance is not None and delta_time is not None and delta_time > 0) else 0
     except TypeError:
         print(f"delta_distance: {delta_distance} , delta_time: {delta_time}")
@@ -37,7 +37,7 @@ def haversine(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
             math.cos(phi_2) * math.sin(delta_lambda / 2.0) ** 2
 
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        return R * c  # output distance in meters
+        return round(R * c, 2)  # output distance in meters
     except Exception as err:
         print(f"Exception has been occurred :{err}")
         print(f"lon1: {lon1} lat1: {lat1} lon2: {lon2} lat2: {lat2}")
@@ -221,11 +221,13 @@ class TrackingDataRefinedProcess:
     def __init__(self):
         self.etl_spark = ETLSpark()
         self.df = self.filter_data("2020", "5", "3")
-        self.df = self.vehicles()
 
     def filter_data(self, year: str, month: str, day: str) -> DataFrame:
         return (self.etl_spark.sqlContext.read.parquet("/data/trusted/vehicles")
-                .filter(f"year =='{year}' and month=='{month}' and day=='{day}'"))
+                .filter(f"year ='{year}' and month ='{month}' and day ='{day}'")
+                .withColumn("hour", F.hour(F.col("event_timestamp")))
+                .withColumn("minute", F.minute(F.col("event_timestamp"))).sort(F.asc("event_timestamp"))
+                )
 
     def perform(self):
         vehicles = self.compute_metrics()
@@ -239,24 +241,19 @@ class TrackingDataRefinedProcess:
     def __call__(self, *args, **kwargs):
         self.perform()
 
-    def vehicles(self) -> DataFrame:
-        return (self.df.withColumn("year", F.year(self.df.event_timestamp))
-                .withColumn("month", F.month(self.df.event_timestamp))
-                .withColumn("day", F.dayofmonth(self.df.event_timestamp))
-                .withColumn("hour", F.hour(self.df.event_timestamp)).sort(F.asc("event_timestamp")))
-
     def compute_metrics(self) -> DataFrame:
         window_spec = (
             Window.partitionBy(self.df.line_code, self.df.vehicle, self.df.year, self.df.month, self.df.day)
-                .orderBy(self.df.event_timestamp))
+                .orderBy(self.df.event_timestamp)
+        )
 
         events = (self.df.withColumn("last_timestamp", F.lag(F.col('event_timestamp'), 1, 0).over(window_spec))
                   .withColumn("last_latitude", F.lag(F.col('latitude'), 1, 0).over(window_spec))
                   .withColumn("last_longitude", F.lag(F.col('longitude'), 1, 0).over(window_spec)))
 
         events_processed = (events.withColumn("delta_time",
-                                              F.unix_timestamp(F.col('event_timestamp')) - F.unix_timestamp(
-                                                  F.col('last_timestamp')))
+                                              F.round(F.unix_timestamp(F.col('event_timestamp')) - F.unix_timestamp(
+                                                  F.col('last_timestamp')), 2))
                             .withColumn("delta_distance",
                                         haversine(F.col('longitude'), F.col('latitude'),
                                                   F.col('last_longitude'), F.col('last_latitude')))
@@ -268,19 +265,29 @@ class TrackingDataRefinedProcess:
         return events_processed
 
     def stop_events(self, df):
-        return (df.filter(F.col("moving_status") == 'STOPPED')
-                .select(F.col("line_code"),
-                        F.col("vehicle"),
-                        F.col("event_timestamp").alias("stop_timestamp"),
-                        F.col("year"),
-                        F.col("month"),
-                        F.col("day"),
-                        F.col("hour"),
-                        F.col("latitude"),
-                        F.col("longitude")
-                        )
-                .sort(F.col("vehicle"), F.col("event_timestamp"))
-                )
+        window_spec = (
+            Window.partitionBy(df.moving_status, df.line_code, df.vehicle, df.year, df.month,
+                               df.day, df.hour, df.minute)
+                .orderBy(df.event_timestamp)
+        )
+
+        df = (df.filter(F.col("moving_status") == 'STOPPED')
+              .withColumn("rn", F.row_number().over(window_spec))
+              .where(F.col("rn") == 1).drop("rn"))
+
+        stop_events = df.select(F.col("line_code"),
+                                F.col("vehicle"),
+                                F.col("event_timestamp").alias("stop_timestamp"),
+                                F.col("year"),
+                                F.col("month"),
+                                F.col("day"),
+                                F.col("hour"),
+                                F.col("minute"),
+                                F.col("latitude"),
+                                F.col("longitude")
+                                ).sort(F.col("vehicle"), F.col("event_timestamp"))
+
+        return stop_events
 
     def event_stop_edges(self, stop_events):
         trips = TimetableRefinedProcess().trips().drop("year", "month", "day")
@@ -289,16 +296,17 @@ class TrackingDataRefinedProcess:
                                                                                                    "bus_stop_longitude")
         stop_events = (
             stop_events.withColumn("event_time", F.date_format(F.col("stop_timestamp"), 'HH:mm:ss')).alias("se")
-                .join(trips.alias("tr"), ["line_code", "vehicle"]).filter(
-                F.col("event_time").between(F.col("start_time"), F.col("end_time"))))
+                .join(trips.alias("tr"), ["line_code", "vehicle"])
+                .filter(F.col("event_time").between(F.col("start_time"), F.col("end_time")))
+        )
 
-        return (stop_events.alias("se").join(bus_stops.alias("bs"), ["line_code", "line_way"],'inner')
+        return (stop_events.alias("se").join(bus_stops.alias("bs"), ["line_code", "line_way"], 'inner')
                 .withColumn("distance",
                             haversine(F.col('se.longitude').cast(T.DoubleType()),
                                       F.col('se.latitude').cast(T.DoubleType()),
                                       F.col('bs.bus_stop_longitude').cast(T.DoubleType()),
                                       F.col('bs.bus_stop_latitude').cast(T.DoubleType())))
-                .filter(F.col("distance") < 60))
+                .filter(F.col("distance") < 30))
 
     @staticmethod
     def save(df: DataFrame, output: str):
@@ -306,8 +314,7 @@ class TrackingDataRefinedProcess:
          .partitionBy("year", "month", "day")
          .format("csv").save(output))
 
-
 # LineRefinedProcess()()
 # BusStopRefinedProcess()()
 # TimetableRefinedProcess()()
-#TrackingDataRefinedProcess()()
+# TrackingDataRefinedProcess()()
