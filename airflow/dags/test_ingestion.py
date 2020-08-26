@@ -25,9 +25,10 @@ args = {
 
 dag = DAG(dag_id='test-ingestion', default_args=args, schedule_interval=None, catchup=False)
 
-spark_submit = "/spark/bin/spark-submit --master local[*] --executor-memory 20g --driver-memory 20g --conf " \
+spark_submit = "/spark/bin/spark-submit --master local[*] --executor-memory 8g --driver-memory 8g --conf " \
                "spark.network.timeout=600s "
 
-load_to_processed = f"{spark_submit} /dataprocessing/refined_ingestion.py "
+load_to_processed = f"{spark_submit} /dataprocessing/job/refined_ingestion.py "
 
-dummy_task("start", dag=dag) >> docker_task(f"refined_ingestion", command=load_to_processed, dag=dag) >> dummy_task("end", dag=dag)
+dummy_task("start", dag=dag) >> docker_task(f"refined_ingestion", command=load_to_processed, dag=dag) >> dummy_task(
+    "end", dag=dag)

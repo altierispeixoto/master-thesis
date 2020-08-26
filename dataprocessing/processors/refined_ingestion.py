@@ -233,7 +233,7 @@ class TrackingDataRefinedProcess:
         vehicles = self.compute_metrics()
         # self.save(vehicles, "/data/refined/vehicles")
 
-        stop_events = self.stop_events(vehicles).limit(1000)
+        stop_events = self.stop_events(vehicles)
         # self.save(stop_events, "/data/refined/stop_events")
         event_stop_edges = self.event_stop_edges(stop_events)
         self.save(event_stop_edges, "/data/refined/event_stop_edges")

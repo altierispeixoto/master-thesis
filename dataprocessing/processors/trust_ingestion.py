@@ -76,6 +76,3 @@ class TrustProcessing:
         (df.coalesce(1).write.mode('overwrite')
          .partitionBy("year", "month", "day")
          .format("parquet").save(output))
-
-# job = TrustProcessing()
-# job.perform()
