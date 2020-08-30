@@ -316,6 +316,6 @@ class TrackingDataRefinedProcess:
 
     @staticmethod
     def save(df: DataFrame, output: str):
-        (df.coalesce(10).write.mode('overwrite').option("header", True)
+        (df.write.mode('overwrite').option("header", True)
          .partitionBy("year", "month", "day")
          .format("csv").save(output))

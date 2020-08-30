@@ -29,7 +29,7 @@ delta = edate - sdate
 
 dag = DAG(dag_id='test-ingestion', default_args=args, schedule_interval=None, catchup=False)
 
-spark_submit = "/spark/bin/spark-submit --master local[*] --executor-memory 10g --driver-memory 10g --conf " \
+spark_submit = "/spark/bin/spark-submit --master local[*] --executor-memory 12g --driver-memory 12g --conf " \
                "spark.network.timeout=600s "
 
 line_tasks = []
