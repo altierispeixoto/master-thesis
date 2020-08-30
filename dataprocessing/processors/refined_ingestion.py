@@ -45,9 +45,9 @@ def haversine(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
 
 class LineRefinedProcess:
 
-    def __init__(self):
+    def __init__(self, year, month, day):
         self.etlspark = ETLSpark()
-        self.df = self.filter_data("2020", "5", "3")
+        self.df = self.filter_data(year, month, day)
 
     def perform(self):
         service_categories = self.service_category()
@@ -85,9 +85,12 @@ class LineRefinedProcess:
 
 class TimetableRefinedProcess:
 
-    def __init__(self):
-        self.etl_spark = ETLSpark()
-        self.df = self.filter_data("2020", "5", "3")
+    def __init__(self, year, month, day):
+        self.year = year
+        self.month = month
+        self.day = day
+        self.etlspark = ETLSpark()
+        self.df = self.filter_data(year, month, day)
 
     def __call__(self, *args, **kwargs):
         self.perform()
@@ -97,7 +100,7 @@ class TimetableRefinedProcess:
         self.save(trips, "/data/refined/trips")
 
     def filter_data(self, year: str, month: str, day: str) -> DataFrame:
-        return (self.etl_spark.sqlContext.read.parquet("/data/trusted/timetable")
+        return (self.etlspark.sqlContext.read.parquet("/data/trusted/timetable")
                 .filter(f"year =='{year}' and month=='{month}' and day=='{day}'"))
 
     def timetable(self) -> DataFrame:
@@ -124,7 +127,7 @@ class TimetableRefinedProcess:
                 .orderBy('line_code', 'time'))
 
     def trips(self):
-        bs = BusStopRefinedProcess()
+        bs = BusStopRefinedProcess(self.year, self.month, self.day)
         trip_endpoints = bs.trip_endpoints().drop("year", "month", "day")
 
         return (self.timetable()
@@ -140,9 +143,9 @@ class TimetableRefinedProcess:
 
 class BusStopRefinedProcess:
 
-    def __init__(self):
-        self.etl_spark = ETLSpark()
-        self.df = self.filter_data("2020", "5", "3")
+    def __init__(self, year, month, day):
+        self.etlspark = ETLSpark()
+        self.df = self.filter_data(year, month, day)
 
     def perform(self):
         bus_stop_type = self.bus_stop_type()
@@ -161,7 +164,7 @@ class BusStopRefinedProcess:
         self.perform()
 
     def filter_data(self, year: str, month: str, day: str) -> DataFrame:
-        return (self.etl_spark.sqlContext.read.parquet("/data/trusted/busstops")
+        return (self.etlspark.sqlContext.read.parquet("/data/trusted/busstops")
                 .filter(f"year =='{year}' and month=='{month}' and day=='{day}'"))
 
     def bus_stop_type(self) -> DataFrame:
@@ -218,12 +221,15 @@ class BusStopRefinedProcess:
 
 class TrackingDataRefinedProcess:
 
-    def __init__(self):
-        self.etl_spark = ETLSpark()
-        self.df = self.filter_data("2020", "5", "3")
+    def __init__(self, year, month, day):
+        self.year = year
+        self.month = month
+        self.day = day
+        self.etlspark = ETLSpark()
+        self.df = self.filter_data(year, month, day)
 
     def filter_data(self, year: str, month: str, day: str) -> DataFrame:
-        return (self.etl_spark.sqlContext.read.parquet("/data/trusted/vehicles")
+        return (self.etlspark.sqlContext.read.parquet("/data/trusted/vehicles")
                 .filter(f"year ='{year}' and month ='{month}' and day ='{day}'")
                 .withColumn("hour", F.hour(F.col("event_timestamp")))
                 .withColumn("minute", F.minute(F.col("event_timestamp"))).sort(F.asc("event_timestamp"))
@@ -231,10 +237,10 @@ class TrackingDataRefinedProcess:
 
     def perform(self):
         vehicles = self.compute_metrics()
-        # self.save(vehicles, "/data/refined/vehicles")
+        self.save(vehicles, "/data/refined/vehicles")
 
         stop_events = self.stop_events(vehicles)
-        # self.save(stop_events, "/data/refined/stop_events")
+        self.save(stop_events, "/data/refined/stop_events")
         event_stop_edges = self.event_stop_edges(stop_events)
         self.save(event_stop_edges, "/data/refined/event_stop_edges")
 
@@ -290,8 +296,8 @@ class TrackingDataRefinedProcess:
         return stop_events
 
     def event_stop_edges(self, stop_events):
-        trips = TimetableRefinedProcess().trips().drop("year", "month", "day")
-        bus_stops = BusStopRefinedProcess().bus_stops().drop("year", "month", "day")
+        trips = TimetableRefinedProcess(self.year, self.month, self.day).trips().drop("year", "month", "day")
+        bus_stops = BusStopRefinedProcess(self.year, self.month, self.day).bus_stops().drop("year", "month", "day")
         bus_stops = bus_stops.withColumnRenamed("latitude", "bus_stop_latitude").withColumnRenamed("longitude",
                                                                                                    "bus_stop_longitude")
         stop_events = (
@@ -313,8 +319,3 @@ class TrackingDataRefinedProcess:
         (df.coalesce(10).write.mode('overwrite').option("header", True)
          .partitionBy("year", "month", "day")
          .format("csv").save(output))
-
-# LineRefinedProcess()()
-# BusStopRefinedProcess()()
-# TimetableRefinedProcess()()
-# TrackingDataRefinedProcess()()
