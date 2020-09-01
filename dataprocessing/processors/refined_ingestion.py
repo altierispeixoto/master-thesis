@@ -101,7 +101,7 @@ class TimetableRefinedProcess:
 
     def filter_data(self, year: str, month: str, day: str) -> DataFrame:
         return (self.etlspark.sqlContext.read.parquet("/data/trusted/timetable")
-                .filter(f"year =='{year}' and month=='{month}' and day=='{day}'"))
+                .filter(f"year ='{year}' and month='{month}' and day='{day}'"))
 
     def timetable(self) -> DataFrame:
         return (self.df.withColumn('end_time', F.lead('time')
@@ -229,15 +229,21 @@ class TrackingDataRefinedProcess:
         self.df = self.filter_data(year, month, day)
 
     def filter_data(self, year: str, month: str, day: str) -> DataFrame:
-        return (self.etlspark.sqlContext.read.parquet("/data/trusted/vehicles")
-                .filter(f"year ='{year}' and month ='{month}' and day ='{day}'")
-                .withColumn("hour", F.hour(F.col("event_timestamp")))
-                .withColumn("minute", F.minute(F.col("event_timestamp"))).sort(F.asc("event_timestamp"))
-                )
+        tracking_data = (self.etlspark.sqlContext.read.parquet("/data/trusted/vehicles")
+                         .filter(f"year ='{year}' and month ='{month}' and day ='{day}'")
+                         .withColumn("hour", F.hour(F.col("event_timestamp")))
+                         .withColumn("minute", F.minute(F.col("event_timestamp"))).sort(F.asc("event_timestamp"))
+                         )
+
+        scheduled_vehicles = TimetableRefinedProcess(2020, 5, 3).trips().select("line_code", "vehicle").distinct()
+        tracking_vehicles = tracking_data.select("line_code", "vehicle").distinct()
+        tracking_scheduled_vehicles = tracking_vehicles.join(scheduled_vehicles, ["line_code", "vehicle"], 'inner')
+
+        return tracking_data.join(tracking_scheduled_vehicles, ["line_code", "vehicle"], 'inner')
 
     def perform(self):
         vehicles = self.compute_metrics()
-        self.save(vehicles, "/data/refined/vehicles")
+        # self.save(vehicles, "/data/refined/vehicles")
 
         stop_events = self.stop_events(vehicles)
         self.save(stop_events, "/data/refined/stop_events")
