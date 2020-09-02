@@ -235,7 +235,7 @@ class TrackingDataRefinedProcess:
                          .withColumn("minute", F.minute(F.col("event_timestamp"))).sort(F.asc("event_timestamp"))
                          )
 
-        scheduled_vehicles = TimetableRefinedProcess(2020, 5, 3).trips().select("line_code", "vehicle").distinct()
+        scheduled_vehicles = TimetableRefinedProcess(year, month, day).trips().select("line_code", "vehicle").distinct()
         tracking_vehicles = tracking_data.select("line_code", "vehicle").distinct()
         tracking_scheduled_vehicles = tracking_vehicles.join(scheduled_vehicles, ["line_code", "vehicle"], 'inner')
 
@@ -246,7 +246,9 @@ class TrackingDataRefinedProcess:
         # self.save(vehicles, "/data/refined/vehicles")
 
         stop_events = self.stop_events(vehicles)
-        self.save(stop_events, "/data/refined/stop_events")
+
+        # self.save(stop_events, "/data/refined/stop_events")
+
         event_stop_edges = self.event_stop_edges(stop_events)
         self.save(event_stop_edges, "/data/refined/event_stop_edges")
 
@@ -283,36 +285,58 @@ class TrackingDataRefinedProcess:
                 .orderBy(df.event_timestamp)
         )
 
-        df = (df.filter(F.col("moving_status") == 'STOPPED')
-              .withColumn("rn", F.row_number().over(window_spec))
-              .where(F.col("rn") == 1).drop("rn"))
+        stop_events = (df.filter(F.col("moving_status") == 'STOPPED')
+                       .withColumn("rn", F.row_number().over(window_spec))
+                       .where(F.col("rn") == 1).drop("rn"))
 
-        stop_events = df.select(F.col("line_code"),
-                                F.col("vehicle"),
-                                F.col("event_timestamp").alias("stop_timestamp"),
-                                F.col("year"),
-                                F.col("month"),
-                                F.col("day"),
-                                F.col("hour"),
-                                F.col("minute"),
-                                F.col("latitude"),
-                                F.col("longitude")
-                                ).sort(F.col("vehicle"), F.col("event_timestamp"))
+        stop_events = stop_events.select(F.col("line_code"),
+                                         F.col("vehicle"),
+                                         F.col("event_timestamp").alias("stop_timestamp"),
+                                         F.col("year"),
+                                         F.col("month"),
+                                         F.col("day"),
+                                         F.col("hour"),
+                                         F.col("minute"),
+                                         F.col("latitude"),
+                                         F.col("longitude")
+                                         ).sort(F.col("vehicle"), F.col("event_timestamp"))
 
-        return stop_events
+        window_spec2 = (
+            Window.partitionBy(stop_events.line_code, stop_events.vehicle)
+                .orderBy(stop_events.stop_timestamp)
+        )
 
-    def event_stop_edges(self, stop_events):
+        stop_events_windowed = stop_events.withColumn("last_stop", F.lag("stop_timestamp").over(window_spec2)).filter(
+            "last_stop is not null").select("line_code", "vehicle", "last_stop",
+                                            F.col("stop_timestamp").alias("actual_stop"))
+
+        events_computed = (
+            df.filter("delta_time is not null").join(stop_events_windowed, ['line_code', 'vehicle'], 'inner').filter(
+                F.col("event_timestamp").between(F.col("last_stop"), F.col("actual_stop")))
+                .groupBy("year", "month", "day", "hour", "line_code", "vehicle", "actual_stop").agg(
+                F.round(F.mean('delta_velocity'), 2).alias("avg_velocity"),
+                F.round(F.sum('delta_distance'), 2).alias("distance")).
+                withColumnRenamed("actual_stop", "stop_timestamp"))
+
+        stop_events = stop_events.select([F.col(col).alias(col) for col in stop_events.columns])
+
+        events_computed = events_computed.select([F.col(col).alias(col) for col in events_computed.columns])
+
+        return (stop_events.join(events_computed, ['line_code', 'vehicle', "stop_timestamp"], 'inner'))
+
+    def event_edges(self, events):
         trips = TimetableRefinedProcess(self.year, self.month, self.day).trips().drop("year", "month", "day")
         bus_stops = BusStopRefinedProcess(self.year, self.month, self.day).bus_stops().drop("year", "month", "day")
         bus_stops = bus_stops.withColumnRenamed("latitude", "bus_stop_latitude").withColumnRenamed("longitude",
                                                                                                    "bus_stop_longitude")
-        stop_events = (
-            stop_events.withColumn("event_time", F.date_format(F.col("stop_timestamp"), 'HH:mm:ss')).alias("se")
+
+        events_computed = (
+            events.withColumn("event_time", F.date_format(F.col("event_timestamp"), 'HH:mm:ss')).alias("se")
                 .join(trips.alias("tr"), ["line_code", "vehicle"])
                 .filter(F.col("event_time").between(F.col("start_time"), F.col("end_time")))
         )
 
-        return (stop_events.alias("se").join(bus_stops.alias("bs"), ["line_code", "line_way"], 'inner')
+        return (events_computed.alias("se").join(bus_stops.alias("bs"), ["line_code", "line_way"], 'inner')
                 .withColumn("distance",
                             haversine(F.col('se.longitude').cast(T.DoubleType()),
                                       F.col('se.latitude').cast(T.DoubleType()),
