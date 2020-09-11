@@ -320,9 +320,12 @@ class TrackingDataRefinedProcess:
 
         stop_events = stop_events.select([F.col(col).alias(col) for col in stop_events.columns])
 
-        events_computed = events_computed.select([F.col(col).alias(col) for col in events_computed.columns])
+        events_computed = events_computed.select([F.col(col).alias(col) for col in events_computed.columns]).drop(
+            "year", "month", "day", "hour", "minute")
 
-        return (stop_events.join(events_computed, ['line_code', 'vehicle', "stop_timestamp"], 'inner'))
+        return (stop_events.join(events_computed, ['line_code', 'vehicle', "stop_timestamp"], 'inner')
+                .select("line_code", "vehicle", "stop_timestamp", "latitude", "longitude", "avg_velocity", "distance",
+                        "year", "month", "day", "hour").sort("line_code", "vehicle", F.asc("stop_timestamp")))
 
     def event_edges(self, events):
         trips = TimetableRefinedProcess(self.year, self.month, self.day).trips().drop("year", "month", "day")
@@ -336,13 +339,29 @@ class TrackingDataRefinedProcess:
                 .filter(F.col("event_time").between(F.col("start_time"), F.col("end_time")))
         )
 
-        return (events_computed.alias("se").join(bus_stops.alias("bs"), ["line_code", "line_way"], 'inner')
-                .withColumn("distance",
-                            haversine(F.col('se.longitude').cast(T.DoubleType()),
-                                      F.col('se.latitude').cast(T.DoubleType()),
-                                      F.col('bs.bus_stop_longitude').cast(T.DoubleType()),
-                                      F.col('bs.bus_stop_latitude').cast(T.DoubleType())))
-                .filter(F.col("distance") < 30))
+        event_edges = (events_computed.alias("se").join(bus_stops.alias("bs"), ["line_code", "line_way"], 'inner')
+                       .withColumn("distance",
+                                   haversine(F.col('se.longitude').cast(T.DoubleType()),
+                                             F.col('se.latitude').cast(T.DoubleType()),
+                                             F.col('bs.bus_stop_longitude').cast(T.DoubleType()),
+                                             F.col('bs.bus_stop_latitude').cast(T.DoubleType())))
+                       .filter(F.col("distance") < 30))
+
+        event_edges = event_edges.select("line_code", "line_way", "vehicle", "event_timestamp", "latitude", "longitude",
+                                         "year", "month", "day", "hour", "minute", "moving_status", "event_time",
+                                         "timetable", "number", "name", "delta_velocity")
+
+        return (event_edges.groupBy(F.col("line_code"), F.col("line_way"), F.col("vehicle"),
+                                    F.col("year"),
+                                    F.col("month"), F.col("day"), F.col("hour"), F.col("minute"),
+                                    F.col("moving_status"), F.col("number"), F.col("name"))
+                .agg(F.mean("delta_velocity").alias("avg_velocity"),
+                     F.last("event_timestamp").alias("event_timestamp"),
+                     F.last("latitude").alias("latitude"),
+                     F.last("longitude").alias("longitude"),
+                     F.last("event_time").alias("event_time")
+                     ).orderBy(F.col("line_code"), F.col("vehicle"),
+                               F.col("event_timestamp")))
 
     @staticmethod
     def save(df: DataFrame, output: str):
