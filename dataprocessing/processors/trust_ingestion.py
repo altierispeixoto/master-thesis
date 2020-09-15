@@ -5,23 +5,24 @@ from .sparketl import ETLSpark
 
 class TrustProcessing:
 
-    def __init__(self):
+    def __init__(self, date):
         self.etlspark = ETLSpark()
+        self.date = date
 
     def __call__(self, *args, **kwargs):
         self.perform()
 
     def perform(self):
-        vehicles = self.vehicles_ingestion("2020-05")
+        vehicles = self.vehicles_ingestion(self.date)
         self.save(vehicles, "/data/trusted/vehicles")
 
-        timetable = self.timetable_ingestion("2020-05")
+        timetable = self.timetable_ingestion(self.date)
         self.save(timetable, "/data/trusted/timetable")
 
-        busstops = self.bustops_ingestion("2020-05")
+        busstops = self.bustops_ingestion(self.date)
         self.save(busstops, "/data/trusted/busstops")
 
-        lines = self.lines_ingestion("2020-05")
+        lines = self.lines_ingestion(self.date)
         self.save(lines, "/data/trusted/lines")
 
     def vehicles_ingestion(self, period: str):

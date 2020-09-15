@@ -126,7 +126,7 @@ class TimetableRefinedProcess:
         )
                 .orderBy('line_code', 'time'))
 
-    def trips(self):
+    def trips(self) -> DataFrame:
         bs = BusStopRefinedProcess(self.year, self.month, self.day)
         trip_endpoints = bs.trip_endpoints().drop("year", "month", "day")
 
@@ -279,7 +279,7 @@ class TrackingDataRefinedProcess:
 
         return events_processed
 
-    def stop_events(self, df):
+    def stop_events(self, df) -> DataFrame:
         trips = TimetableRefinedProcess(self.year, self.month, self.day).trips().drop("year", "month", "day")
         window_spec = (
             Window.partitionBy(df.moving_status, df.line_code, df.vehicle, df.year, df.month,
@@ -344,7 +344,7 @@ class TrackingDataRefinedProcess:
         return (dff.select("line_code", "line_way", "vehicle", "moving_status", "stop_timestamp", "latitude",
                            "longitude", "avg_velocity", "year", "month", "day", "hour"))
 
-    def event_edges(self, events):
+    def event_edges(self, events) -> DataFrame:
         trips = TimetableRefinedProcess(self.year, self.month, self.day).trips().drop("year", "month", "day")
         bus_stops = BusStopRefinedProcess(self.year, self.month, self.day).bus_stops().drop("year", "month", "day")
         bus_stops = bus_stops.withColumnRenamed("latitude", "bus_stop_latitude").withColumnRenamed("longitude",
@@ -383,7 +383,7 @@ class TrackingDataRefinedProcess:
                           "longitude", "avg_velocity", "number", "year", "month", "day", "hour")
 
     @classmethod
-    def process_events(cls, stop_events, event_edges):
+    def process_events(cls, stop_events, event_edges) -> DataFrame:
         return event_edges.drop("number").union(stop_events.withColumnRenamed("stop_timestamp", "event_timestamp"))
 
     @staticmethod

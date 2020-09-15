@@ -73,7 +73,7 @@ COPY script/requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
 
-RUN chown -R airflow: ${AIRFLOW_USER_HOME}
+RUN chown -R airflow:${AIRFLOW_USER_HOME}
 
 EXPOSE 8080 5555 8793
 

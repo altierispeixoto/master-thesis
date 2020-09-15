@@ -2,11 +2,12 @@
 import os
 import sys
 from argparse import ArgumentParser
+from datetime import datetime
 
 sys.path.insert(0, os.path.abspath('..'))
 from dataprocessing.processors.refined_ingestion import LineRefinedProcess, BusStopRefinedProcess, \
     TimetableRefinedProcess, TrackingDataRefinedProcess
-from datetime import datetime
+
 
 parser = ArgumentParser()
 parser.add_argument("-d", "--date", dest="date", help="date", metavar="DATE")
