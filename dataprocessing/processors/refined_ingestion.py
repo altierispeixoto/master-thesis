@@ -78,9 +78,9 @@ class LineRefinedProcess:
         return self.df.distinct()
 
     def persist(self, df: DataFrame, output: str):
-        (df.coalesce(1).write.mode('overwrite').option("header", True)
+        (df.write.mode('overwrite')
          .partitionBy("year", "month", "day")
-         .format("csv").save(output))
+         .format("parquet").save(output))
 
 
 class TimetableRefinedProcess:
@@ -136,9 +136,9 @@ class TimetableRefinedProcess:
 
     @staticmethod
     def save(df: DataFrame, output: str):
-        (df.coalesce(1).write.mode('overwrite').option("header", True)
+        (df.write.mode('overwrite')
          .partitionBy("year", "month", "day")
-         .format("csv").save(output))
+         .format("parquet").save(output))
 
 
 class BusStopRefinedProcess:
@@ -214,9 +214,9 @@ class BusStopRefinedProcess:
 
     @staticmethod
     def save(df: DataFrame, output: str):
-        (df.coalesce(1).write.mode('overwrite').option("header", True)
+        (df.write.mode('overwrite')
          .partitionBy("year", "month", "day")
-         .format("csv").save(output))
+         .format("parquet").save(output))
 
 
 class TrackingDataRefinedProcess:
@@ -251,7 +251,6 @@ class TrackingDataRefinedProcess:
 
         events = self.process_events(stop_events, bus_event_edges)
         self.save(events, "/data/refined/events")
-
 
     def __call__(self, *args, **kwargs):
         self.perform()
@@ -388,6 +387,6 @@ class TrackingDataRefinedProcess:
 
     @staticmethod
     def save(df: DataFrame, output: str):
-        (df.write.mode('overwrite').option("header", True)
+        (df.write.mode('overwrite')
          .partitionBy("year", "month", "day")
-         .format("csv").save(output))
+         .format("parquet").save(output))
