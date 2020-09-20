@@ -10,31 +10,32 @@ CALL spatial.addWKTLayer('layer_curitiba','geometry');
 //Create Time Tree Indexes
 //CREATE INDEX ON :Year(value);
 
-create index on :BusStop (number);
-create index on :BusStop (latitude,longitude);
+//create index on :BusStop (number);
+//create index on :BusStop (latitude,longitude);
+//
+//
+//create index on :Schedule (start_time, end_time, time_table);
+//create index on :Schedule (start_time, end_time, time_table, line_code, start_point);
+//create index on :Schedule (start_time, end_time, time_table, line_code, start_point, year, month, day, vehicle, line_way);
+//
+//create index on :Schedule (line_code, start_point);
+//
+//create index on :Stop (latitude, longitude,event_timestamp, event_time,line_code);
+//
+//create index on :Stop (line_code,vehicle, event_timestamp);
+//create index on :Stop (line_code ,latitude ,longitude,vehicle,event_time);
+//create index on :Stop (line_code ,latitude ,longitude,event_time);
+//
+
+//create index on :Trip(line_way);
+//create index on :Schedule (start_time, end_time, time_table);
 
 
-create index on :Schedule (start_time, end_time, time_table);
-create index on :Schedule (start_time, end_time, time_table, line_code, start_point);
-create index on :Schedule (start_time, end_time, time_table, line_code, start_point, year, month, day, vehicle, line_way);
+//create constraint on (v:Vehicle) ASSERT v.vehicle is UNIQUE;
 
-create index on :Schedule (line_code, start_point);
-
-create index on :Stop (latitude, longitude,event_timestamp, event_time,line_code);
-
-create index on :Stop (line_code,vehicle, event_timestamp);
-create index on :Stop (line_code ,latitude ,longitude,vehicle,event_time);
-create index on :Stop (line_code ,latitude ,longitude,event_time);
 
 create index on :Line(line_code);
-create index on :Trip(line_way);
-create index on :Schedule (start_time, end_time, time_table);
-
-
-
 create constraint on (y:Year) ASSERT y.value IS UNIQUE;
-create constraint on (v:Vehicle) ASSERT v.vehicle is UNIQUE;
-
 CREATE INDEX ON :Month(value);
 CREATE INDEX ON :Day(value);
 CREATE INDEX ON :Hour(value);
