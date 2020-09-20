@@ -8,7 +8,7 @@ from datetime import timedelta, datetime
 import ast
 import yaml
 
-config = yaml.load(open('./dags/config/data.yml'), Loader=yaml.FullLoader)
+config = yaml.load(open('../config/data.yml'), Loader=yaml.FullLoader)
 date_range = ast.literal_eval(Variable.get("date_range"))
 
 args = {

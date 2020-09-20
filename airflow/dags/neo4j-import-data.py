@@ -1,12 +1,10 @@
 import ast
-from datetime import timedelta
-
 import airflow
 import yaml
 from airflow.models import DAG
 from airflow.models import Variable
 import pandas as pd
-from lib.utils import docker_task, dummy_task
+from lib.utils import docker_task, dummy_task, load_into_neo4j, create_task
 from datetime import timedelta, datetime
 from airflow.operators.bash_operator import BashOperator
 
@@ -52,19 +50,50 @@ def move_to_neo4j_folder(datareferencia, dag):
     return task
 
 
-tasks = []
+def load_data_to_neo4j(datareferencia, dag):
+    load_into_neo4j_tasks = []
+    for neo in config['neo4j_import']:
+        task = create_task(f"load-into-neo4j-{neo}-{datareferencia}",
+                           op_kwargs={'cypher_query': config['neo4j_import'][neo]['cypher_query'],
+                                      'datareferencia': datareferencia}, python_callable=load_into_neo4j, _dag=dag)
+        load_into_neo4j_tasks.append(task)
+    return load_into_neo4j_tasks
+
+
+docker_tasks = []
+move_tasks = []
+load_into_neo4j_tasks = []
+prepare_load_tasks = []
+end_tasks = []
+
 for i in range(delta.days + 1):
     day = sdate + timedelta(days=i)
     job_date = day.strftime("%Y-%m-%d")
 
     load_to_processed = f"{spark_submit} /dataprocessing/job/neo4j_ingestion.py -d {job_date}"
-    tasks.append(docker_task(f"neo4j_ingestion-{job_date}", command=load_to_processed, dag=dag))
+    docker_tasks.append(docker_task(f"neo4j_ingestion-{job_date}", command=load_to_processed, dag=dag))
 
-    tasks.append(move_to_neo4j_folder(job_date, dag))
+    prepare_load_task = dummy_task(f"prepare_load-{job_date}", dag)
+    prepare_load_tasks.append(prepare_load_task)
 
-start.set_downstream(tasks[0])
+    end_task = dummy_task(f"end_task-{job_date}", dag)
+    end_tasks.append(end_task)
 
-for j in range(0, len(tasks) - 1):
-    tasks[j].set_downstream(tasks[j + 1])
+    for t in load_data_to_neo4j(job_date, dag):
+        load_into_neo4j_tasks.append(prepare_load_task >> t >> end_task)
 
-tasks[len(tasks) - 1].set_downstream(end)
+    move_tasks.append(move_to_neo4j_folder(job_date, dag))
+
+start.set_downstream(docker_tasks[0])
+
+for j in range(0, len(docker_tasks) - 1):
+    docker_tasks[j].set_downstream(move_tasks[j])
+    move_tasks[j].set_downstream(prepare_load_tasks[j])
+
+    end_tasks[j].set_downstream(docker_tasks[j + 1])
+
+docker_tasks[len(docker_tasks) - 1].set_downstream(move_tasks[len(move_tasks) - 1])
+
+move_tasks[len(docker_tasks) - 1].set_downstream(prepare_load_tasks[len(move_tasks) - 1])
+
+end_tasks[len(end_tasks) - 1].set_downstream(end)

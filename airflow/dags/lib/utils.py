@@ -2,11 +2,17 @@ import lzma
 import os
 import shutil
 from datetime import timedelta, datetime
-
+from pprint import pprint
+import logging
+from neo4j import GraphDatabase
 import urllib3
 from airflow.operators.docker_operator import DockerOperator
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.operators.python_operator import PythonOperator
+
+NEO4J_URI = 'bolt://10.5.0.9:7687'  # Variable.get('NEO4J_URI')
+NEO4J_USER = "neo4j"  # Variable.get('NEO4J_USER')
+NEO4J_PASSWORD = "h4ck3r"  # Variable.get('NEO4J_PASSWORD')
 
 
 def dummy_task(task_id, dag):
@@ -46,6 +52,17 @@ def create_task(task_id, op_kwargs, python_callable, _dag):
         python_callable=python_callable,
         dag=_dag,
     )
+
+
+def load_into_neo4j(ds, cypher_query, datareferencia, **kwargs):
+    pprint(kwargs)
+    neo4j_driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    with neo4j_driver.session() as session:
+        cypher_query = cypher_query.replace('{datareferencia}', datareferencia)
+        print(cypher_query)
+        print('--' * 30)
+        result = session.run(cypher_query)
+        logging.info("Execution: %s", result.single())
 
 
 def download_files(ds, folder, file, date_range, base_url, **kwargs):
