@@ -57,14 +57,14 @@ neo4j_import:
         return count(*)
 
     # line_code,start_point,end_point,start_time,timetable,vehicle,end_time,line_way,year,month,day
-    trips:
+    timetable:
       cypher_query: >
         USING PERIODIC COMMIT 1000
         LOAD CSV WITH HEADERS FROM 'file:///trips/{datareferencia}/trips.csv' AS row
         MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})
         WITH l, row
-        MERGE (t:Trip {start_point: row.start_point, end_point: row.end_point, start_time:row.start_time,timetable:row.timetable, end_time: row.end_time, line_way:row.line_way })
-        MERGE (l)-[:HAS_TRIP]->(t)
+        MERGE (t:Timetable {start_point: row.start_point, end_point: row.end_point, start_time:row.start_time,timetable:row.timetable, end_time: row.end_time, line_way:row.line_way })
+        MERGE (l)-[:HAS_TIMETABLE]->(t)
         return count(*)
 
     # type,year,month,day
@@ -79,11 +79,25 @@ neo4j_import:
       cypher_query: >
         USING PERIODIC COMMIT 10000
         LOAD CSV WITH HEADERS FROM 'file:///bus_stops/{datareferencia}/bus_stops.csv' AS row
-        MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})-[:HAS_TRIP]->(t:Trip {line_way:row.line_way})
+        MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})
         MATCH (bst:BusStopType {value: row.type})
-        WITH t, row
+        WITH bst, row, l
+        MERGE (l)-[:HAS_TRIP]->(t:Trip {line_way:row.line_way})
         MERGE (t)-[:HAS_BUS_STOP]->(bs:BusStop {number: row.number, name: row.name, latitude: row.latitude, longitude:row.longitude})
         MERGE (bs)-[:HAS_TYPE]->(bst)
+        return count(*)
+
+
+    #line_code,line_way,start_point,end_point,year,month,day
+    trip_endpoints:
+      cypher_query: >
+        USING PERIODIC COMMIT 10000
+        LOAD CSV WITH HEADERS FROM 'file:///trip_endpoints/{datareferencia}/trip_endpoints.csv' AS row
+        MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})-[:HAS_TRIP]->(t:Trip {line_way:row.line_way})
+        MATCH (t)-[:HAS_BUS_STOP]->(bss:BusStop {number:row.start_point})
+        MATCH (t)-[:HAS_BUS_STOP]->(bse:BusStop {number:row.end_point})
+        MERGE (t)-[:STARTS_ON_POINT]->(bss)
+        MERGE (t)-[:ENDS_ON_POINT]->(bse)
         return count(*)
 
     #line_code,line_way,start_seq,end_seq,start_point,end_point,year,month,day
@@ -99,23 +113,6 @@ neo4j_import:
             r.distance = distance(point({longitude: toFloat(bss.longitude),latitude: toFloat(bss.latitude) ,crs: 'wgs-84'})
             ,point({longitude: toFloat(bse.longitude),latitude: toFloat(bse.latitude) ,crs: 'wgs-84'}))
 
-    #line_code,line_way,start_point,end_point,year,month,day
-    trip_endpoints:
-      cypher_query: >
-        USING PERIODIC COMMIT 10000
-        LOAD CSV WITH HEADERS FROM 'file:///trip_endpoints/{datareferencia}/trip_endpoints.csv' AS row
-        MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})-[:HAS_TRIP]->(t:Trip {line_way:row.line_way})-[:HAS_BUS_STOP]->(bss:BusStop {number:row.start_point})
-        MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})-[:HAS_TRIP]->(t:Trip {line_way:row.line_way})-[:HAS_BUS_STOP]->(bse:BusStop {number:row.end_point})
-        MERGE(t)-[:STARTS_ON_POINT]->(bss)
-        MERGE(t)-[:ENDS_ON_POINT]->(bse)
-
-    #line_code,line_way,vehicle,moving_status,event_timestamp,latitude,longitude,avg_velocity,number,hour,year,month,day
-    bus_event_edges:
-      cypher_query: >
-        LOAD CSV WITH HEADERS FROM 'file:///bus_event_edges/{datareferencia}/bus_event_edges.csv' AS row
-        MERGE (bee:BusEventEdge {number: row.number, name: row.name, latitude: row.latitude, longitude:row.longitude})
-        return count(*)
-
     #line_code,line_way,vehicle,moving_status,event_timestamp,latitude,longitude,avg_velocity,hour,year,month,day
     events:
       cypher_query: >
@@ -123,6 +120,12 @@ neo4j_import:
         MERGE (ev:Event {number: row.number, name: row.name, latitude: row.latitude, longitude:row.longitude})
         return count(*)
 
+    #line_code,line_way,vehicle,moving_status,event_timestamp,latitude,longitude,avg_velocity,number,hour,year,month,day
+    bus_event_edges:
+      cypher_query: >
+        LOAD CSV WITH HEADERS FROM 'file:///bus_event_edges/{datareferencia}/bus_event_edges.csv' AS row
+        MERGE (bee:BusEventEdge {number: row.number, name: row.name, latitude: row.latitude, longitude:row.longitude})
+        return count(*)
 
 #  lines_timetree:
 #    cypher_query: >
