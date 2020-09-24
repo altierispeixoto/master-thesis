@@ -116,8 +116,14 @@ neo4j_import:
     #line_code,line_way,vehicle,moving_status,event_timestamp,latitude,longitude,avg_velocity,hour,year,month,day
     events:
       cypher_query: >
+        USING PERIODIC COMMIT 10000
         LOAD CSV WITH HEADERS FROM 'file:///events/{datareferencia}/events.csv' AS row
-        MERGE (ev:Event {number: row.number, name: row.name, latitude: row.latitude, longitude:row.longitude})
+        MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})-[:HAS_TRIP]->(t:Trip {line_way:row.line_way})
+        MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:CONTAINS]->(h:Hour {value:row.hour})
+        MERGE (ev:Event {vehicle: row.vehicle, moving_status: row.moving_status, event_timestamp:row.event_timestamp,latitude:row.latitude, longitude: row.longitude, avg_velocity: row.avg_velocity})
+        WITH t, ev, h
+        MERGE (t)-[:HAS_EVENT]->(ev)
+        MERGE (h)-[:HAS_EVENT]->(ev)
         return count(*)
 
     #line_code,line_way,vehicle,moving_status,event_timestamp,latitude,longitude,avg_velocity,number,hour,year,month,day

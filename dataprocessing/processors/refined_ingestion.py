@@ -383,7 +383,14 @@ class TrackingDataRefinedProcess:
 
     @classmethod
     def process_events(cls, stop_events, event_edges) -> DataFrame:
-        return event_edges.drop("number").union(stop_events.withColumnRenamed("stop_timestamp", "event_timestamp"))
+        events = event_edges.drop("number").union(stop_events.withColumnRenamed("stop_timestamp", "event_timestamp"))
+
+        window_spec = (
+            Window.partitionBy(events.line_code, events.line_way, events.vehicle, events.year, events.month, events.day)
+                .orderBy(events.event_timestamp)
+        )
+        events = (events.withColumn("last_timestamp", F.lag(F.col('event_timestamp'), 1, 0).over(window_spec)))
+        return events
 
     @staticmethod
     def save(df: DataFrame, output: str):
