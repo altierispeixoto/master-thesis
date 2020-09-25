@@ -1,6 +1,7 @@
 from pyspark.sql import DataFrame
 
 from .sparketl import ETLSpark
+import pyspark.sql.functions as F
 
 
 class Neo4JDataProcess:
@@ -91,7 +92,8 @@ class Neo4JDataProcess:
     def events(self) -> DataFrame:
         return (self.etlspark.sqlContext.read.parquet("/data/refined/events")
                 .filter(f"year =='{self.year}' and month=='{self.month}' and day=='{self.day}'")
-                .distinct())
+                .distinct().sort(F.col("line_code"), F.col("line_way"), F.col("vehicle"), F.col("last_timestamp"),
+                                 F.col("event_timestamp")))
 
     @staticmethod
     def save(df: DataFrame, output: str):

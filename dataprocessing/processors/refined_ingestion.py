@@ -389,7 +389,9 @@ class TrackingDataRefinedProcess:
             Window.partitionBy(events.line_code, events.line_way, events.vehicle, events.year, events.month, events.day)
                 .orderBy(events.event_timestamp)
         )
-        events = (events.withColumn("last_timestamp", F.lag(F.col('event_timestamp'), 1, 0).over(window_spec)))
+        events = (events.withColumn("last_timestamp", F.lag(F.col('event_timestamp'), 1, 0).over(window_spec))
+                  .withColumn("delta_time_in_sec", (F.unix_timestamp(F.col('event_timestamp')) - F.unix_timestamp(F.col("last_timestamp")))))
+
         return events
 
     @staticmethod
