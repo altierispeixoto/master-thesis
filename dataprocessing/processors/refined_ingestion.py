@@ -280,9 +280,10 @@ class TrackingDataRefinedProcess:
 
     def stop_events(self, df) -> DataFrame:
         trips = TimetableRefinedProcess(self.year, self.month, self.day).trips().drop("year", "month", "day")
+
         window_spec = (
-            Window.partitionBy(df.moving_status, df.line_code, df.vehicle, df.year, df.month,
-                               df.day, df.hour, df.minute)
+            Window.partitionBy(df.moving_status, df.line_code, df.vehicle, df.year, df.month, df.day, df.hour,
+                               df.minute)
                 .orderBy(df.event_timestamp)
         )
 
@@ -385,12 +386,23 @@ class TrackingDataRefinedProcess:
     def process_events(cls, stop_events, event_edges) -> DataFrame:
         events = event_edges.drop("number").union(stop_events.withColumnRenamed("stop_timestamp", "event_timestamp"))
 
+        w0 = (
+            Window.partitionBy(events.line_code, events.line_way, events.vehicle, events.moving_status, events.year,
+                               events.month, events.day, events.event_timestamp)
+                .orderBy(events.event_timestamp)
+        )
+
+        events = (events.withColumn("avg_velocity", F.mean(F.col('avg_velocity')).over(w0))
+                  .withColumn("rn", F.row_number().over(w0))
+                  .where(F.col("rn") == 1).drop("rn"))
+
         window_spec = (
             Window.partitionBy(events.line_code, events.line_way, events.vehicle, events.year, events.month, events.day)
                 .orderBy(events.event_timestamp)
         )
         events = (events.withColumn("last_timestamp", F.lag(F.col('event_timestamp'), 1, 0).over(window_spec))
-                  .withColumn("delta_time_in_sec", (F.unix_timestamp(F.col('event_timestamp')) - F.unix_timestamp(F.col("last_timestamp")))))
+                  .withColumn("delta_time_in_sec",
+                              (F.unix_timestamp(F.col('event_timestamp')) - F.unix_timestamp(F.col("last_timestamp")))))
 
         return events
 

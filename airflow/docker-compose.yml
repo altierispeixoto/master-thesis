@@ -150,8 +150,8 @@ services:
             NEO4J_dbms_security_procedures_unrestricted: algo.*, apoc.*
             NEO4J_apoc_import_file_enabled: "true"
             NEO4J_dbms_memory_pagecache_size: "8G"
-            NEO4J_dbms_memory_heap_initial__size: "16G"
-            NEO4J_dbms_memory_heap_max__size: "16G"
+            NEO4J_dbms_memory_heap_initial__size: "8G"
+            NEO4J_dbms_memory_heap_max__size: "8G"
         networks:
             airflow-network:
                 ipv4_address: 10.5.0.9
