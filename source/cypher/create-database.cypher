@@ -181,3 +181,12 @@ MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInte
 with t, row, l
 MERGE (l)-[:HAS_TIMETABLE]->(t)
 return count(*);
+
+
+USING PERIODIC COMMIT 20000
+LOAD CSV WITH HEADERS FROM 'file:///bus_event_edges/2019-05-02/bus_event_edges.csv' AS row
+MATCH (evi:Event {vehicle: row.vehicle, event_timestamp:row.event_timestamp})
+MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})-[:HAS_TRIP]->(t:Trip {line_way:row.line_way})-[:HAS_BUS_STOP]->(bs:BusStop {number: row.number})
+WITH bs, evi
+MERGE (evi)-[:IS_NEAR_BY]->(bs)
+return count(*)

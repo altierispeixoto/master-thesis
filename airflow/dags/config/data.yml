@@ -42,6 +42,7 @@ neo4j_import:
 
     lines:
       cypher_query: >
+        USING PERIODIC COMMIT 20000
         LOAD CSV WITH HEADERS FROM 'file:///lines/{datareferencia}/lines.csv' AS row
         MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})
         MATCH (c:Color {value:row.color})
@@ -51,16 +52,6 @@ neo4j_import:
         MERGE (d)-[:HAS_LINE]->(l)
         MERGE (l)-[:HAS_COLOR]->(c)
         MERGE (l)-[:HAS_SERVICE_CATEGORY]-(s)
-        return count(*)
-
-    timetable:
-      cypher_query: >
-        USING PERIODIC COMMIT 1000
-        LOAD CSV WITH HEADERS FROM 'file:///trips/{datareferencia}/trips.csv' AS row
-        MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})
-        WITH l, row
-        MERGE (t:Timetable {start_point: row.start_point, end_point: row.end_point, start_time:row.start_time,timetable:row.timetable, end_time: row.end_time, line_way:row.line_way })
-        MERGE (l)-[:HAS_TIMETABLE]->(t)
         return count(*)
 
     bus_stop_type:
@@ -81,10 +72,9 @@ neo4j_import:
         MERGE (bs)-[:HAS_TYPE]->(bst)
         return count(*)
 
-
     trip_endpoints:
       cypher_query: >
-        USING PERIODIC COMMIT 10000
+        USING PERIODIC COMMIT 20000
         LOAD CSV WITH HEADERS FROM 'file:///trip_endpoints/{datareferencia}/trip_endpoints.csv' AS row
         MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})-[:HAS_TRIP]->(t:Trip {line_way:row.line_way})
         MATCH (t)-[:HAS_BUS_STOP]->(bss:BusStop {number:row.start_point})
@@ -95,33 +85,59 @@ neo4j_import:
 
     line_routes:
       cypher_query: >
-        USING PERIODIC COMMIT 10000
+        USING PERIODIC COMMIT 20000
         LOAD CSV WITH HEADERS FROM 'file:///line_routes/{datareferencia}/line_routes.csv' AS row
         MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})-[:HAS_TRIP]->(t:Trip {line_way:row.line_way})
         MATCH (t)-[:HAS_BUS_STOP]->(bss:BusStop {number:row.start_point})
         MATCH (t)-[:HAS_BUS_STOP]->(bse:BusStop {number:row.end_point})
-        MERGE (bss) -[r:NEXT_STOP {line_code: row.line_code, line_way: row.line_way}]->(bse)
+        MERGE (bss)-[r:NEXT_STOP {line_code: row.line_code, line_way: row.line_way}]->(bse)
         ON CREATE SET
             r.distance = distance(point({longitude: toFloat(bss.longitude),latitude: toFloat(bss.latitude) ,crs: 'wgs-84'})
             ,point({longitude: toFloat(bse.longitude),latitude: toFloat(bse.latitude) ,crs: 'wgs-84'}))
+        return count(*)
 
     events:
       cypher_query: >
-        USING PERIODIC COMMIT 10000
+        USING PERIODIC COMMIT 30000
+        LOAD CSV WITH HEADERS FROM 'file:///events/{datareferencia}/events.csv' AS row
+        CREATE (ev:Event {vehicle: row.vehicle, moving_status: row.moving_status, event_timestamp:row.event_timestamp,latitude:row.latitude, longitude: row.longitude, avg_velocity: row.avg_velocity})
+        return count(*)
+
+    trip_has_events:
+      cypher_query: >
+        USING PERIODIC COMMIT 30000
         LOAD CSV WITH HEADERS FROM 'file:///events/{datareferencia}/events.csv' AS row
         MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})-[:HAS_TRIP]->(t:Trip {line_way:row.line_way})
-        MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:CONTAINS]->(h:Hour {value:toInteger(row.hour)})
-        CREATE (ev:Event {vehicle: row.vehicle, moving_status: row.moving_status, event_timestamp:row.event_timestamp,latitude:row.latitude, longitude: row.longitude, avg_velocity: row.avg_velocity})
-        WITH t, ev, h
+        MATCH (ev:Event {vehicle: row.vehicle, event_timestamp:row.event_timestamp})
+        WITH  ev, t
         MERGE (t)-[:HAS_EVENT]->(ev)
+        return count(*)
+
+    time_has_events:
+      cypher_query: >
+        USING PERIODIC COMMIT 30000
+        LOAD CSV WITH HEADERS FROM 'file:///events/{datareferencia}/events.csv' AS row
+        MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:CONTAINS]->(h:Hour {value:toInteger(row.hour)})
+        MATCH (ev:Event {vehicle: row.vehicle, event_timestamp:row.event_timestamp})
+        WITH  ev, h
         MERGE (h)-[:HAS_EVENT]->(ev)
         return count(*)
 
-    events_edges:
-      cypher_query:
-
-    bus_event_edges:
+    moves:
       cypher_query: >
+        USING PERIODIC COMMIT 30000
+        LOAD CSV WITH HEADERS FROM 'file:///events/{datareferencia}/events.csv' AS row
+        with row where toInteger(row.delta_time_in_sec) > 0 and  toFloat(row.delta_time_in_sec) <= 1200
+        MATCH (evi:Event {vehicle: row.vehicle, event_timestamp:row.last_timestamp}) , (evf:Event {vehicle: row.vehicle, event_timestamp:row.event_timestamp})
+        create (evi)-[:MOVED_TO {delta_time_in_sec: row.delta_time_in_sec}]->(evf)
+        return count(*)
+
+    near_bus_stops:
+      cypher_query: >
+        USING PERIODIC COMMIT 20000
         LOAD CSV WITH HEADERS FROM 'file:///bus_event_edges/{datareferencia}/bus_event_edges.csv' AS row
-        MERGE (bee:BusEventEdge {number: row.number, name: row.name, latitude: row.latitude, longitude:row.longitude})
+        MATCH (evi:Event {vehicle: row.vehicle, event_timestamp:row.event_timestamp})
+        MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})-[:HAS_TRIP]->(t:Trip {line_way:row.line_way})-[:HAS_BUS_STOP]->(bs:BusStop {number: row.number})
+        WITH bs, evi
+        MERGE (evi)-[:IS_NEAR_BY]->(bs)
         return count(*)

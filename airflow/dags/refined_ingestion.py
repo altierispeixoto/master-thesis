@@ -27,7 +27,7 @@ edate = datetime.strptime(date_range['date_end'], "%Y-%m-%d")
 
 delta = edate - sdate
 
-dag = DAG(dag_id='test-ingestion', default_args=args, schedule_interval=None, catchup=False)
+dag = DAG(dag_id='refined-ingestion', default_args=args, schedule_interval=None, catchup=False)
 
 spark_submit = "/spark/bin/spark-submit --master local[*] --executor-memory 12g --driver-memory 12g --conf " \
                "spark.network.timeout=600s "
