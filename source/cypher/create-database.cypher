@@ -115,8 +115,9 @@ LOAD CSV WITH HEADERS FROM 'file:///bus_stops/2019-05-02/bus_stops.csv' AS row
 MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})
 MATCH (bst:BusStopType {value: row.type})
 WITH bst, row, l
+MERGE (bs:BusStop {number: row.number, name: row.name, latitude: row.latitude, longitude:row.longitude})
 MERGE (l)-[:HAS_TRIP]->(t:Trip {line_way:row.line_way})
-MERGE (t)-[:HAS_BUS_STOP]->(bs:BusStop {number: row.number, name: row.name, latitude: row.latitude, longitude:row.longitude})
+MERGE (t)-[:HAS_BUS_STOP]->(bs)
 MERGE (bs)-[:HAS_TYPE]->(bst)
 return count(*);
 
