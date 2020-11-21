@@ -84,16 +84,16 @@ FOREACH(i in RANGE(0, length(hours)-2) |
             CREATE UNIQUE (hour1)-[:NEXT]->(hour2))));
 
 
-LOAD CSV WITH HEADERS FROM 'file:///color/2019-05-02/color.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///color/2019-05-01/color.csv' AS row
 MERGE (c:Color {value: row.color})
 return count(*);
 
-LOAD CSV WITH HEADERS FROM 'file:///service_category/2019-05-02/service_category.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///service_category/2019-05-01/service_category.csv' AS row
 MERGE (s:ServiceCategory {value: row.service_category})
 return count(*);
 
 USING PERIODIC COMMIT 20000
-LOAD CSV WITH HEADERS FROM 'file:///lines/2019-05-02/lines.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///lines/2019-05-01/lines.csv' AS row
 MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})
 MATCH (c:Color {value:row.color})
 MATCH (s:ServiceCategory {value:row.service_category})
@@ -105,13 +105,13 @@ MERGE (l)-[:HAS_SERVICE_CATEGORY]-(s)
 return count(*);
 
 
-LOAD CSV WITH HEADERS FROM 'file:///bus_stop_type/2019-05-02/bus_stop_type.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///bus_stop_type/2019-05-01/bus_stop_type.csv' AS row
 MERGE (t:BusStopType {value: row.type})
 return count(*);
 
 
 USING PERIODIC COMMIT 10000
-LOAD CSV WITH HEADERS FROM 'file:///bus_stops/2019-05-02/bus_stops.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///bus_stops/2019-05-01/bus_stops.csv' AS row
 MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})
 MATCH (bst:BusStopType {value: row.type})
 WITH bst, row, l
@@ -122,7 +122,7 @@ MERGE (bs)-[:HAS_TYPE]->(bst)
 return count(*);
 
 USING PERIODIC COMMIT 20000
-LOAD CSV WITH HEADERS FROM 'file:///trip_endpoints/2019-05-02/trip_endpoints.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///trip_endpoints/2019-05-01/trip_endpoints.csv' AS row
 MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})-[:HAS_TRIP]->(t:Trip {line_way:row.line_way})
 MATCH (t)-[:HAS_BUS_STOP]->(bss:BusStop {number:row.start_point})
 MATCH (t)-[:HAS_BUS_STOP]->(bse:BusStop {number:row.end_point})
@@ -132,7 +132,7 @@ return count(*);
 
 
 USING PERIODIC COMMIT 20000
-LOAD CSV WITH HEADERS FROM 'file:///line_routes/2019-05-02/line_routes.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///line_routes/2019-05-01/line_routes.csv' AS row
 MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})-[:HAS_TRIP]->(t:Trip {line_way:row.line_way})
 MATCH (t)-[:HAS_BUS_STOP]->(bss:BusStop {number:row.start_point})
 MATCH (t)-[:HAS_BUS_STOP]->(bse:BusStop {number:row.end_point})
@@ -143,13 +143,13 @@ ON CREATE SET
 return count(*);
 
 USING PERIODIC COMMIT 30000
-LOAD CSV WITH HEADERS FROM 'file:///events/2019-05-02/events.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///events/2019-05-01/events.csv' AS row
 CREATE (ev:Event {vehicle: row.vehicle, moving_status: row.moving_status, event_timestamp:row.event_timestamp,latitude:row.latitude, longitude: row.longitude, avg_velocity: row.avg_velocity})
 return count(*);
 
 
 USING PERIODIC COMMIT 30000
-LOAD CSV WITH HEADERS FROM 'file:///events/2019-05-02/events.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///events/2019-05-01/events.csv' AS row
 MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})-[:HAS_TRIP]->(t:Trip {line_way:row.line_way})
 MATCH (ev:Event {vehicle: row.vehicle, event_timestamp:row.event_timestamp})
 WITH  ev, t
@@ -158,7 +158,7 @@ return count(*);
 
 
 USING PERIODIC COMMIT 30000
-LOAD CSV WITH HEADERS FROM 'file:///events/2019-05-02/events.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///events/2019-05-01/events.csv' AS row
 MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:CONTAINS]->(h:Hour {value:toInteger(row.hour)})
 MATCH (ev:Event {vehicle: row.vehicle, event_timestamp:row.event_timestamp})
 WITH  ev, h
@@ -167,7 +167,7 @@ return count(*);
 
 
 USING PERIODIC COMMIT 30000
-LOAD CSV WITH HEADERS FROM 'file:///events/2019-05-02/events.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///events/2019-05-01/events.csv' AS row
 with row where toInteger(row.delta_time_in_sec) > 0 and  toFloat(row.delta_time_in_sec) <= 1200
 MATCH (evi:Event {vehicle: row.vehicle, event_timestamp:row.last_timestamp}) , (evf:Event {vehicle: row.vehicle, event_timestamp:row.event_timestamp})
 create (evi)-[:MOVED_TO {delta_time_in_sec: row.delta_time_in_sec}]->(evf)
@@ -175,7 +175,7 @@ return count(*);
 
 
 USING PERIODIC COMMIT 20000
-LOAD CSV WITH HEADERS FROM 'file:///trips/2019-05-02/trips.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///trips/2019-05-01/trips.csv' AS row
 CREATE (t:Timetable {start_point: row.start_point, end_point: row.end_point, start_time:row.start_time,timetable:row.timetable, end_time: row.end_time, line_way:row.line_way })
 WITH t, row
 MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})
@@ -185,7 +185,7 @@ return count(*);
 
 
 USING PERIODIC COMMIT 20000
-LOAD CSV WITH HEADERS FROM 'file:///bus_event_edges/2019-05-02/bus_event_edges.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///bus_event_edges/2019-05-01/bus_event_edges.csv' AS row
 MATCH (evi:Event {vehicle: row.vehicle, event_timestamp:row.event_timestamp})
 MATCH (y:Year {value: toInteger(row.year)})-[:CONTAINS]->(m:Month {value: toInteger(row.month)})-[:CONTAINS]->(d:Day {value: toInteger(row.day)})-[:HAS_LINE]->(l:Line {line_code: row.line_code})-[:HAS_TRIP]->(t:Trip {line_way:row.line_way})-[:HAS_BUS_STOP]->(bs:BusStop {number: row.number})
 WITH bs, evi
