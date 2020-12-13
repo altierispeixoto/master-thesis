@@ -84,6 +84,11 @@ FOREACH(i in RANGE(0, length(hours)-2) |
             CREATE UNIQUE (hour1)-[:NEXT]->(hour2))));
 
 
+LOAD CSV WITH HEADERS FROM 'file:///neighborhoods/bairros.csv' AS row
+MERGE (n:Neighborhood {code: row.code,name: row.name, section_code: row.section_code, section_name: row.section_name, h3_index10: row.h3_index10 })
+return count(*);
+
+
 LOAD CSV WITH HEADERS FROM 'file:///color/2019-05-01/color.csv' AS row
 MERGE (c:Color {value: row.color})
 return count(*);

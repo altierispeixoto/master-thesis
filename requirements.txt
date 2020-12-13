@@ -8,8 +8,3 @@ ipython-cypher
 geopandas
 h3
 folium
-geomet
-contextily
-cenpy
-geoplot
-cartopy
