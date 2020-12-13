@@ -1,0 +1,1 @@
+docker run --gpus all --rm -it -p 8888:8888 -p 8787:8787 -p 8786:8786 -v /work/master-thesis/notebooks:/rapids/notebooks/host rapidsai/rapidsai:cuda10.2-runtime-ubuntu16.04

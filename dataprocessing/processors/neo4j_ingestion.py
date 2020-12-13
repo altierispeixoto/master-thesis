@@ -16,6 +16,7 @@ class Neo4JDataProcess:
         self.perform()
 
     def perform(self):
+
         color = self.color()
         self.save(color, "/data/neo4j/color")
 

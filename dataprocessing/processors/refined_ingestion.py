@@ -1,5 +1,5 @@
 import math
-
+import h3
 import pyspark.sql.functions as F
 import pyspark.sql.types as T
 from pyspark.sql import DataFrame
@@ -41,6 +41,12 @@ def haversine(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
     except Exception as err:
         print(f"Exception has been occurred :{err}")
         print(f"lon1: {lon1} lat1: {lat1} lon2: {lon2} lat2: {lat2}")
+
+
+# h3_level = 10
+@F.udf(returnType=T.StringType())
+def lat_lng_to_h3(latitude, longitude, h3_level):
+    return h3.geo_to_h3(float(latitude), float(longitude), h3_level)
 
 
 class LineRefinedProcess:
@@ -173,7 +179,8 @@ class BusStopRefinedProcess:
     def bus_stops(self, ) -> DataFrame:
         return (self.df
                 .select("line_code", "line_way", "number", "name", F.col("seq").cast(T.IntegerType()).alias("seq"),
-                        "latitude", "longitude", "type", "year", "month", "day")
+                        "latitude", "longitude", "type", "year", "month", "day",
+                        lat_lng_to_h3(F.col("latitude"), F.col("longitude"), F.lit(10)).alias("h3_index10"))
                 .distinct())
 
     def line_routes(self) -> DataFrame:
