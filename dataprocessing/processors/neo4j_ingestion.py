@@ -52,46 +52,46 @@ class Neo4JDataProcess:
         STATIC DATA
         :return:
         """
-        return self.etlspark.sqlContext.read.parquet("/data/refined/colors").distinct()
+        return self.etlspark.sqlContext.read.option("mergeSchema", "true").parquet("/data/refined/colors").distinct()
 
     def service_category(self) -> DataFrame:
-        return self.etlspark.sqlContext.read.parquet("/data/refined/service_categories").distinct()
+        return self.etlspark.sqlContext.read.option("mergeSchema", "true").parquet("/data/refined/service_categories").distinct()
 
     def lines(self) -> DataFrame:
-        return (self.etlspark.sqlContext.read.parquet("/data/refined/lines")
+        return (self.etlspark.sqlContext.read.option("mergeSchema", "true").parquet("/data/refined/lines")
                 .filter(f"year =='{self.year}' and month=='{self.month}' and day=='{self.day}'")
                 .distinct())
 
     def trips(self) -> DataFrame:
-        return (self.etlspark.sqlContext.read.parquet("/data/refined/trips")
+        return (self.etlspark.sqlContext.read.option("mergeSchema", "true").parquet("/data/refined/trips")
                 .filter(f"year =='{self.year}' and month=='{self.month}' and day=='{self.day}'")
                 .distinct())
 
     def bus_stop_type(self):
-        return self.etlspark.sqlContext.read.parquet("/data/refined/bus_stop_type").distinct()
+        return self.etlspark.sqlContext.read.option("mergeSchema", "true").parquet("/data/refined/bus_stop_type").distinct()
 
     def bus_stops(self) -> DataFrame:
-        return (self.etlspark.sqlContext.read.parquet("/data/refined/bus_stops")
+        return (self.etlspark.sqlContext.read.option("mergeSchema", "true").option("mergeSchema", "true").parquet("/data/refined/bus_stops")
                 .filter(f"year =='{self.year}' and month=='{self.month}' and day=='{self.day}'")
                 .distinct())
 
     def line_routes(self) -> DataFrame:
-        return (self.etlspark.sqlContext.read.parquet("/data/refined/line_routes")
+        return (self.etlspark.sqlContext.read.option("mergeSchema", "true").parquet("/data/refined/line_routes")
                 .filter(f"year =='{self.year}' and month=='{self.month}' and day=='{self.day}'")
                 .distinct())
 
     def trip_endpoints(self) -> DataFrame:
-        return (self.etlspark.sqlContext.read.parquet("/data/refined/trip_endpoints")
+        return (self.etlspark.sqlContext.read.option("mergeSchema", "true").parquet("/data/refined/trip_endpoints")
                 .filter(f"year =='{self.year}' and month=='{self.month}' and day=='{self.day}'")
                 .distinct())
 
     def bus_event_edges(self) -> DataFrame:
-        return (self.etlspark.sqlContext.read.parquet("/data/refined/bus_event_edges")
+        return (self.etlspark.sqlContext.read.option("mergeSchema", "true").parquet("/data/refined/bus_event_edges")
                 .filter(f"year =='{self.year}' and month=='{self.month}' and day=='{self.day}'")
                 .distinct())
 
     def events(self) -> DataFrame:
-        return (self.etlspark.sqlContext.read.parquet("/data/refined/events")
+        return (self.etlspark.sqlContext.read.option("mergeSchema", "true").parquet("/data/refined/events")
                 .filter(f"year =='{self.year}' and month=='{self.month}' and day=='{self.day}'")
                 .distinct().sort(F.col("line_code"), F.col("line_way"), F.col("vehicle"), F.col("last_timestamp"),
                                  F.col("event_timestamp")))

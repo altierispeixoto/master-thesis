@@ -4,7 +4,7 @@ import pyspark.sql.functions as F
 import pyspark.sql.types as T
 from pyspark.sql import DataFrame
 from pyspark.sql.window import Window
-
+import ast
 from .sparketl import ETLSpark
 
 
@@ -20,6 +20,11 @@ def delta_velocity(delta_distance: float, delta_time: float) -> float:
                 delta_distance is not None and delta_time is not None and delta_time > 0) else 0
     except TypeError:
         print(f"delta_distance: {delta_distance} , delta_time: {delta_time}")
+
+
+@F.udf(T.ArrayType(T.StringType()))
+def tolist(text):
+    return ast.literal_eval(text)
 
 
 @F.udf(returnType=T.DoubleType())
@@ -177,11 +182,20 @@ class BusStopRefinedProcess:
         return self.df.select("type", "year", "month", "day").distinct()
 
     def bus_stops(self, ) -> DataFrame:
-        return (self.df
-                .select("line_code", "line_way", "number", "name", F.col("seq").cast(T.IntegerType()).alias("seq"),
-                        "latitude", "longitude", "type", "year", "month", "day",
-                        lat_lng_to_h3(F.col("latitude"), F.col("longitude"), F.lit(10)).alias("h3_index10"))
-                .distinct())
+        neighborhoods = self.etlspark.sqlContext.read.option("header", "true").csv(
+            "/data/static_data/neighborhoods/bairros.csv")
+
+        neighborhoods = neighborhoods.withColumn("neighborhoods_h3_index10", tolist(F.col("h3_index10"))).drop(
+            "h3_index10").drop("name", "section_code", "section_name")
+
+        bus_stops = (self.df
+                     .select("line_code", "line_way", "number", "name", F.col("seq").cast(T.IntegerType()).alias("seq"),
+                             "latitude", "longitude", "type", "year", "month", "day",
+                             lat_lng_to_h3(F.col("latitude"), F.col("longitude"), F.lit(10)).alias("h3_index10"))
+                     .distinct())
+
+        return (bus_stops.join(neighborhoods, F.expr("array_contains(neighborhoods_h3_index10, h3_index10)"))) \
+            .drop("neighborhoods_h3_index10")
 
     def line_routes(self) -> DataFrame:
         bus_stops = self.bus_stops().select("line_code", "line_way", "number", "name", "seq", "year", "month", "day")
