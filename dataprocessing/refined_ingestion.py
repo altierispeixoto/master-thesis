@@ -1,12 +1,16 @@
 # Path hack.
-import os
-import sys
+
 from argparse import ArgumentParser
 from datetime import datetime
 
-sys.path.insert(0, os.path.abspath('..'))
-from dataprocessing.processors.refined_ingestion import LineRefinedProcess, BusStopRefinedProcess, \
-    TimetableRefinedProcess, TrackingDataRefinedProcess
+import sys
+import os
+
+PACKAGE_PARENT = '..'
+SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
+sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
+
+from dataprocessing.processors.refined_ingestion import LineRefinedProcess, BusStopRefinedProcess, TimetableRefinedProcess, TrackingDataRefinedProcess
 
 
 parser = ArgumentParser()
